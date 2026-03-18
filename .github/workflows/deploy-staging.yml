@@ -23,17 +23,22 @@ jobs:
     name: Deploy to Staging Server
     runs-on: ubuntu-latest
     needs: [security-check]
-    environment: staging
     steps:
       - name: Trigger deployment
         env:
           DEPLOY_WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
           DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
         run: |
-          curl -s -X POST "$DEPLOY_WEBHOOK" \
+          if [ -z "$DEPLOY_WEBHOOK" ]; then
+            echo "Warning: DEPLOY_WEBHOOK_URL secret is not set. Skipping webhook deployment."
+            exit 0
+          fi
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DEPLOY_WEBHOOK" \
             -H "Content-Type: application/json" \
             -H "X-Deploy-Secret: $DEPLOY_SECRET" \
-            -d '{"repo":"yukimart-backend","branch":"staging","env":"staging","commit":"'"$GITHUB_SHA"'"}'
+            -d '{"repo":"yukimart-backend","branch":"staging","env":"staging","commit":"'"$GITHUB_SHA"'"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          echo "Webhook response: HTTP $HTTP_CODE"
 
   verify:
     name: Verify Staging
