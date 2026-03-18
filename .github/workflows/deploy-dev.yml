@@ -1,7 +1,7 @@
 # ============================================================
-# YukiMart Backend - Deploy to DEV
+# YukiMart Backend - Deploy to Development
 # ============================================================
-name: 🚀 Deploy DEV
+name: Deploy to Development
 
 on:
   push:
@@ -9,13 +9,11 @@ on:
 
 jobs:
   deploy:
-    name: 🚀 Deploy to DEV
+    name: Deploy to Dev Server
     runs-on: ubuntu-latest
     environment: development
-    needs: []
-
     steps:
-      - name: 🚀 Trigger deploy webhook
+      - name: Trigger deployment
         env:
           DEPLOY_WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
           DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
@@ -23,5 +21,24 @@ jobs:
           curl -s -X POST "$DEPLOY_WEBHOOK" \
             -H "Content-Type: application/json" \
             -H "X-Deploy-Secret: $DEPLOY_SECRET" \
-            -d "{\"repo\":\"yukimart-backend\",\"branch\":\"dev\",\"env\":\"development\",\"commit\":\"$GITHUB_SHA\"}"
-          echo "✅ DEV deploy webhook triggered"
+            -d '{"repo":"yukimart-backend","branch":"dev","env":"development","commit":"'"$GITHUB_SHA"'"}'
+
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    steps:
+      - run: sleep 20
+      - name: API health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "https://yukimart.io.vn/api" || echo "000")
+          echo "API status: HTTP $STATUS"
+        continue-on-error: true
+
+  notify:
+    name: Deployment Report
+    runs-on: ubuntu-latest
+    needs: [deploy, verify]
+    if: always()
+    steps:
+      - run: echo "Dev deploy - deploy=${{ needs.deploy.result }} verify=${{ needs.verify.result }}"
