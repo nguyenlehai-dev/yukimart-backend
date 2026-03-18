@@ -1,0 +1,26 @@
+# ============================================================
+# YukiMart Backend - Deploy to STAGING
+# ============================================================
+name: 🧪 Deploy STAGING
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  deploy:
+    name: 🚀 Deploy to STAGING
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: 🚀 Trigger deploy webhook
+        env:
+          DEPLOY_WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+        run: |
+          curl -s -X POST "$DEPLOY_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -H "X-Deploy-Secret: $DEPLOY_SECRET" \
+            -d "{\"repo\":\"yukimart-backend\",\"branch\":\"staging\",\"env\":\"staging\",\"commit\":\"$GITHUB_SHA\"}"
+          echo "✅ Staging deploy webhook triggered"

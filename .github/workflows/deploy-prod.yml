@@ -1,0 +1,32 @@
+# ============================================================
+# YukiMart Backend - Deploy to PRODUCTION
+# ============================================================
+name: 🚀 Deploy PRODUCTION
+
+on:
+  push:
+    branches: [prod]
+
+jobs:
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: 🚀 Trigger deploy webhook
+        env:
+          DEPLOY_WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DEPLOY_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -H "X-Deploy-Secret: $DEPLOY_SECRET" \
+            -d "{\"repo\":\"yukimart-backend\",\"branch\":\"prod\",\"env\":\"production\",\"commit\":\"$GITHUB_SHA\"}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          echo "HTTP: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Deploy failed!"
+            exit 1
+          fi
+          echo "✅ Production deploy successful!"

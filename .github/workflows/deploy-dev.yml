@@ -1,0 +1,27 @@
+# ============================================================
+# YukiMart Backend - Deploy to DEV
+# ============================================================
+name: 🚀 Deploy DEV
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    name: 🚀 Deploy to DEV
+    runs-on: ubuntu-latest
+    environment: development
+    needs: []
+
+    steps:
+      - name: 🚀 Trigger deploy webhook
+        env:
+          DEPLOY_WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+        run: |
+          curl -s -X POST "$DEPLOY_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -H "X-Deploy-Secret: $DEPLOY_SECRET" \
+            -d "{\"repo\":\"yukimart-backend\",\"branch\":\"dev\",\"env\":\"development\",\"commit\":\"$GITHUB_SHA\"}"
+          echo "✅ DEV deploy webhook triggered"
