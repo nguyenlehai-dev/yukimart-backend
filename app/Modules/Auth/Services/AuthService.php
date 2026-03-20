@@ -164,6 +164,21 @@ class AuthService
     }
 
     /**
+     * Cập nhật ảnh đại diện cục bộ.
+     */
+    public function updateAvatar(User $user, \Illuminate\Http\UploadedFile $file): string
+    {
+        if ($user->avatar) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $file->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return $path;
+    }
+
+    /**
      * Xóa tất cả token (đăng xuất mọi thiết bị).
      */
     public function revokeAllTokens(User $user): void

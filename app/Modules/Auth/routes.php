@@ -29,4 +29,5 @@ Route::prefix('auth')
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/password', [AuthController::class, 'changePassword']);
+        Route::post('/avatar', [AuthController::class, 'updateAvatar']);
     });

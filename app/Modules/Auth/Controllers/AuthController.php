@@ -153,6 +153,23 @@ class AuthController extends Controller
         return $response;
     }
 
+    // ──────────────────── CẬP NHẬT AVATAR ────────────────────
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+        ]);
+
+        $file = $request->file('avatar');
+        $path = $this->authService->updateAvatar($request->user(), $file);
+
+        return ApiResponse::success([
+            'avatar_url' => asset('storage/' . $path),
+            'user' => $request->user()->fresh()->toAuthArray(),
+        ], 'Cập nhật ảnh đại diện thành công.');
+    }
+
     // ──────────────────── CSRF COOKIE ────────────────────
 
     /**

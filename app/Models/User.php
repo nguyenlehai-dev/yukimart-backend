@@ -28,6 +28,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'avatar',
         'failed_login_attempts',
         'locked_until',
     ];
@@ -125,8 +126,16 @@ class User extends Authenticatable
     // ── Format response ──
 
     /**
-     * Trả về mảng user cho API auth.
+     * Get the full URL of the avatar.
      */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if ($this->avatar) {
+            return asset('storage/' . $this->avatar);
+        }
+        return null;
+    }
+
     /**
      * Nhãn hiển thị cho từng role.
      */
@@ -148,6 +157,7 @@ class User extends Authenticatable
             'email'      => $this->email,
             'role'       => $this->role,
             'role_label' => $this->getRoleLabel(),
+            'avatar'     => $this->avatar_url,
         ];
     }
 }
