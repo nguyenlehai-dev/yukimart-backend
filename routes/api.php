@@ -1,28 +1,23 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ProductController;
+use App\Helpers\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| YukiMart API Routes
+| YukiMart API Routes (Global)
 |--------------------------------------------------------------------------
+|
+| Routes của từng module nằm trong app/Modules/{Module}/routes.php
+| và được ModuleServiceProvider tự động load.
+|
+| File này chỉ chứa routes không thuộc module nào.
+|
 */
 
-// Authentication routes
-Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-});
-
-// Product routes
-Route::apiResource('products', ProductController::class);
-
-// Health check
+// ── Health Check ──
 Route::get('/health', function () {
-    return response()->json([
+    return ApiResponse::success([
         'status' => 'ok',
         'app' => 'YukiMart API',
         'version' => '1.0.0',
