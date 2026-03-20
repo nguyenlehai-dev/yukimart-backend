@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Models\Schemas;
+namespace App\Modules\Product\Models\Schemas;
 
 use OpenApi\Attributes as OA;
 
 #[OA\Schema(
     schema: "Product",
-    title: "Product",
-    description: "Product model",
+    title: "Sản phẩm",
+    description: "Schema sản phẩm cho Swagger",
     properties: [
         new OA\Property(property: "id", type: "integer", example: 1),
         new OA\Property(property: "name", type: "string", example: "YukiMart Product"),
@@ -23,5 +23,5 @@ use OpenApi\Attributes as OA;
 )]
 class ProductSchema
 {
-    // Virtual schema for Swagger documentation
+    // Schema ảo cho tài liệu Swagger
 }
