@@ -15,11 +15,42 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // ── Admin ──
+        User::factory()->create([
+            'name' => 'Admin YukiMart',
+            'email' => 'admin@yukimart.com',
+            'password' => 'password',
+            'role' => 'admin',
+        ]);
+
+        // ── Khách lẻ (retail) ──
+        User::factory()->create([
+            'name' => 'Nguyễn Văn A',
+            'email' => 'khachle@yukimart.com',
+            'password' => 'password',
+            'role' => 'retail',
+        ]);
 
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            'name' => 'Trần Thị B',
+            'email' => 'retail@yukimart.com',
+            'password' => 'password',
+            'role' => 'retail',
+        ]);
+
+        // ── Khách sỉ (wholesale) ──
+        User::factory()->create([
+            'name' => 'Công Ty TNHH ABC',
+            'email' => 'khachsi@yukimart.com',
+            'password' => 'password',
+            'role' => 'wholesale',
+        ]);
+
+        User::factory()->create([
+            'name' => 'Đại Lý XYZ',
+            'email' => 'wholesale@yukimart.com',
+            'password' => 'password',
+            'role' => 'wholesale',
         ]);
     }
 }
