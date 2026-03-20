@@ -127,13 +127,27 @@ class User extends Authenticatable
     /**
      * Trả về mảng user cho API auth.
      */
+    /**
+     * Nhãn hiển thị cho từng role.
+     */
+    public function getRoleLabel(): string
+    {
+        return match ($this->role) {
+            'admin'     => 'Quản trị viên',
+            'wholesale' => 'Khách sỉ',
+            'retail'    => 'Khách lẻ',
+            default     => 'Khách hàng',
+        };
+    }
+
     public function toAuthArray(): array
     {
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'email' => $this->email,
-            'role' => $this->role,
+            'id'         => $this->id,
+            'name'       => $this->name,
+            'email'      => $this->email,
+            'role'       => $this->role,
+            'role_label' => $this->getRoleLabel(),
         ];
     }
 }
