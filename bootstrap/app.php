@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         App\Providers\ModuleServiceProvider::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust all proxies (Cloudflare, load balancer)
+        $middleware->trustProxies(at: '*');
+
         // API middleware stack
         $middleware->api(prepend: [
             HandleCors::class,
