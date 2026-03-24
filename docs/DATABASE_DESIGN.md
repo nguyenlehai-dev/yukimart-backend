@@ -606,6 +606,62 @@ Thẻ kho — lịch sử giao dịch tồn kho.
 - `products` 1-n (polymorphic) với `media` qua `collection_name = product-images`.
 - `inventory` 1-n với `inventory_transactions`.
 
+
+---
+
+## 7. Thiết lập giá (Price Lists)
+
+### `price_lists`
+Bảng giá: quản lý nhiều bảng giá (sỉ, VIP, chi nhánh, khuyến mãi).
+
+| Cột | Kiểu | Nullable | Mặc định | Ghi chú |
+|-----|------|----------|----------|---------|
+| id | bigint unsigned | No | — | PK |
+| name | varchar(255) | No | — | Tên bảng giá |
+| slug | varchar(255) | No | — | UNIQUE |
+| description | text | Yes | null | |
+| status | varchar | No | active | active, inactive |
+| is_default | boolean | No | false | Bảng giá chung |
+| start_date | datetime | Yes | null | Hiệu lực từ |
+| end_date | datetime | Yes | null | Hiệu lực đến |
+| base_price_list_id | bigint | Yes | null | FK → price_lists, SET NULL |
+| formula_type | varchar | Yes | null | percentage, fixed_amount |
+| formula_value | decimal(15,2) | Yes | null | VD: -10 = giảm 10% |
+| auto_update_from_base | boolean | No | false | |
+| add_products_from_base | boolean | No | false | |
+| rounding_type | varchar | Yes | null | none/unit/ten/hundred/thousand/ten_thousand |
+| rounding_method | varchar | Yes | null | round/ceil/floor |
+| cashier_policy | varchar | No | allow_all | allow_all/allow_with_warning/only_in_list |
+| created_by | bigint | Yes | null | FK → users |
+| updated_by | bigint | Yes | null | FK → users |
+| timestamps | | | | |
+
+### `price_list_items`
+Chi tiết giá từng sản phẩm/biến thể trong bảng giá.
+
+| Cột | Kiểu | Nullable | Mặc định | Ghi chú |
+|-----|------|----------|----------|---------|
+| id | bigint unsigned | No | — | PK |
+| price_list_id | bigint | No | — | FK → price_lists, CASCADE |
+| product_id | bigint | No | — | FK → products, CASCADE |
+| variant_id | bigint | Yes | null | FK → product_variants, CASCADE |
+| unit_id | bigint | Yes | null | FK → product_units, SET NULL |
+| price | decimal(15,2) | No | 0 | Giá bán |
+| item_formula_type | varchar | Yes | null | override công thức bảng giá |
+| item_formula_value | decimal(15,2) | Yes | null | |
+| timestamps | | | | |
+| UNIQUE | (price_list_id, product_id, variant_id, unit_id) | | | |
+
+### `price_list_organizations`
+Phạm vi áp dụng bảng giá theo chi nhánh (pivot).
+
+| Cột | Kiểu | Nullable | Ghi chú |
+|-----|------|----------|---------|
+| price_list_id | bigint | No | FK → price_lists, CASCADE |
+| organization_id | bigint | No | FK → organizations, CASCADE |
+| PK | (price_list_id, organization_id) | | |
+
 ---
 
 *File được cập nhật theo migration trong `database/migrations/`.*
+

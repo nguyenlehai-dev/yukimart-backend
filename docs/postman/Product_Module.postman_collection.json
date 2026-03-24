@@ -1,0 +1,364 @@
+{
+  "info": {
+    "name": "Yukimart - Full API",
+    "description": "Postman collection day du cho du an Yukimart Backend. Bao gom tat ca API endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
+    { "key": "token", "value": "" },
+    { "key": "org_id", "value": "1" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.add({ key: 'X-Organization-Id', value: pm.collectionVariables.get('org_id') });",
+          "pm.request.headers.add({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var r=pm.response.json();if(r.data&&r.data.access_token){pm.collectionVariables.set('token',r.data.access_token);} if(r.data&&r.data.current_organization_id){pm.collectionVariables.set('org_id',String(r.data.current_organization_id));}"] } }],
+          "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"email\":\"admin@example.com\",\"password\":\"quandcore**11\"}" }, "url": "{{base_url}}/auth/login" }
+        },
+        {
+          "name": "Logout",
+          "request": { "method": "POST", "url": "{{base_url}}/auth/logout" }
+        },
+        {
+          "name": "Me (thong tin user)",
+          "request": { "method": "GET", "url": "{{base_url}}/user" }
+        },
+        {
+          "name": "Switch Organization",
+          "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"organization_id\":1}" }, "url": "{{base_url}}/auth/switch-organization" }
+        },
+        {
+          "name": "Forgot Password",
+          "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"email\":\"admin@example.com\"}" }, "url": "{{base_url}}/auth/forgot-password" }
+        },
+        {
+          "name": "Reset Password",
+          "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"token\":\"xxx\",\"email\":\"admin@example.com\",\"password\":\"newpassword\",\"password_confirmation\":\"newpassword\"}" }, "url": "{{base_url}}/auth/reset-password" }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/users/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/users?search=&status=&sort_by=id&sort_order=desc&limit=20" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/users/1" } },
+        { "name": "Tao user", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Test User\",\"email\":\"test@example.com\",\"password\":\"password\",\"password_confirmation\":\"password\"}" }, "url": "{{base_url}}/users" } },
+        { "name": "Cap nhat user", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Test User Updated\"}" }, "url": "{{base_url}}/users/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/users/1/status" } },
+        { "name": "Xoa user", "request": { "method": "DELETE", "url": "{{base_url}}/users/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/users/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/users/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/users/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/users/import" } }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/organizations/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/organizations" } },
+        { "name": "Tree", "request": { "method": "GET", "url": "{{base_url}}/organizations/tree" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/organizations/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/organizations/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/organizations/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Chi nhanh test\",\"status\":\"active\"}" }, "url": "{{base_url}}/organizations" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Chi nhanh updated\"}" }, "url": "{{base_url}}/organizations/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/organizations/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/organizations/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/organizations/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/organizations/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/organizations/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/organizations/import" } }
+      ]
+    },
+    {
+      "name": "Permissions",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/permissions/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/permissions" } },
+        { "name": "Tree", "request": { "method": "GET", "url": "{{base_url}}/permissions/tree" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/permissions/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"test.permission\"}" }, "url": "{{base_url}}/permissions" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"test.permission.updated\"}" }, "url": "{{base_url}}/permissions/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/permissions/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/permissions/bulk-delete" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/permissions/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/permissions/import" } }
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/roles/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/roles" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/roles/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"test-role\",\"permissions\":[1,2,3]}" }, "url": "{{base_url}}/roles" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"test-role-updated\"}" }, "url": "{{base_url}}/roles/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/roles/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/roles/bulk-delete" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/roles/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/roles/import" } }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/settings" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/settings/public" } },
+        { "name": "Theo key", "request": { "method": "GET", "url": "{{base_url}}/settings/app_name" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"app_name\":\"Yukimart\"}" }, "url": "{{base_url}}/settings" } }
+      ]
+    },
+    {
+      "name": "Log Activities",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/log-activities/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/log-activities" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/log-activities/1" } },
+        { "name": "Xoa 1", "request": { "method": "DELETE", "url": "{{base_url}}/log-activities/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/log-activities/bulk-delete" } },
+        { "name": "Xoa theo ngay", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"before_date\":\"2026-01-01\"}" }, "url": "{{base_url}}/log-activities/delete-by-date" } },
+        { "name": "Xoa tat ca", "request": { "method": "POST", "url": "{{base_url}}/log-activities/clear" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/log-activities/export" } }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/posts/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/posts?search=&status=&category_id=&sort_by=id&sort_order=desc&limit=20" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/posts/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"title\":\"Bai viet test\",\"content\":\"Noi dung bai viet test day du\",\"status\":\"published\"}" }, "url": "{{base_url}}/posts" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"title\":\"Bai viet updated\"}" }, "url": "{{base_url}}/posts/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"published\"}" }, "url": "{{base_url}}/posts/1/status" } },
+        { "name": "Tang luot xem", "request": { "method": "POST", "url": "{{base_url}}/posts/1/view" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/posts/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/posts/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"published\"}" }, "url": "{{base_url}}/posts/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/posts/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/posts/import" } }
+      ]
+    },
+    {
+      "name": "Post Categories",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/post-categories/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/post-categories" } },
+        { "name": "Tree", "request": { "method": "GET", "url": "{{base_url}}/post-categories/tree" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/post-categories/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/post-categories/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/post-categories/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Danh muc test\",\"status\":\"active\"}" }, "url": "{{base_url}}/post-categories" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Danh muc updated\"}" }, "url": "{{base_url}}/post-categories/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/post-categories/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/post-categories/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/post-categories/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/post-categories/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/post-categories/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/post-categories/import" } }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/documents/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/documents" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/documents/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"title\":\"Van ban test\",\"content\":\"Noi dung van ban\"}" }, "url": "{{base_url}}/documents" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"title\":\"Van ban updated\"}" }, "url": "{{base_url}}/documents/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/documents/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/documents/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/documents/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/documents/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/documents/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/documents/import" } }
+      ]
+    },
+    {
+      "name": "Document Types",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/document-types/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/document-types" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/document-types/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/document-types/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/document-types/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Loai van ban test\"}" }, "url": "{{base_url}}/document-types" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Loai van ban updated\"}" }, "url": "{{base_url}}/document-types/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/document-types/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/document-types/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/document-types/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/document-types/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/document-types/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/document-types/import" } }
+      ]
+    },
+    {
+      "name": "Document Signers",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/document-signers/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/document-signers" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/document-signers/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/document-signers/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/document-signers/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Nguoi ky test\"}" }, "url": "{{base_url}}/document-signers" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Nguoi ky updated\"}" }, "url": "{{base_url}}/document-signers/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/document-signers/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/document-signers/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/document-signers/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/document-signers/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/document-signers/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/document-signers/import" } }
+      ]
+    },
+    {
+      "name": "Document Fields",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/document-fields/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/document-fields" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/document-fields/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/document-fields/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/document-fields/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Linh vuc test\"}" }, "url": "{{base_url}}/document-fields" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Linh vuc updated\"}" }, "url": "{{base_url}}/document-fields/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/document-fields/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/document-fields/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/document-fields/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/document-fields/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/document-fields/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/document-fields/import" } }
+      ]
+    },
+    {
+      "name": "Issuing Agencies",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/issuing-agencies/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/issuing-agencies" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/issuing-agencies/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/issuing-agencies/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/issuing-agencies/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Co quan test\"}" }, "url": "{{base_url}}/issuing-agencies" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Co quan updated\"}" }, "url": "{{base_url}}/issuing-agencies/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/issuing-agencies/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/issuing-agencies/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/issuing-agencies/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/issuing-agencies/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/issuing-agencies/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/issuing-agencies/import" } }
+      ]
+    },
+    {
+      "name": "Issuing Levels",
+      "item": [
+        { "name": "Stats", "request": { "method": "GET", "url": "{{base_url}}/issuing-levels/stats" } },
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/issuing-levels" } },
+        { "name": "Public", "request": { "method": "GET", "url": "{{base_url}}/issuing-levels/public" } },
+        { "name": "Public Options", "request": { "method": "GET", "url": "{{base_url}}/issuing-levels/public-options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/issuing-levels/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Cap ban hanh test\"}" }, "url": "{{base_url}}/issuing-levels" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Cap ban hanh updated\"}" }, "url": "{{base_url}}/issuing-levels/1" } },
+        { "name": "Doi trang thai", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"active\"}" }, "url": "{{base_url}}/issuing-levels/1/status" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/issuing-levels/1" } },
+        { "name": "Bulk delete", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/issuing-levels/bulk-delete" } },
+        { "name": "Bulk status", "request": { "method": "PATCH", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"status\":\"active\"}" }, "url": "{{base_url}}/issuing-levels/bulk-status" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/issuing-levels/export" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/issuing-levels/import" } }
+      ]
+    },
+    {
+      "name": "Product Categories",
+      "item": [
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/product-categories?search=&status=active&sort_by=id&sort_order=desc&limit=20" } },
+        { "name": "Tree", "request": { "method": "GET", "url": "{{base_url}}/product-categories/tree" } },
+        { "name": "Options", "request": { "method": "GET", "url": "{{base_url}}/product-categories/options" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/product-categories/1" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Nhom hang test\",\"description\":\"Mo ta\",\"status\":\"active\",\"parent_id\":null,\"sort_order\":0}" }, "url": "{{base_url}}/product-categories" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Nhom hang updated\"}" }, "url": "{{base_url}}/product-categories/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/product-categories/1" } }
+      ]
+    },
+    {
+      "name": "Brands",
+      "item": [
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/brands?search=&status=active&limit=20" } },
+        { "name": "Options", "request": { "method": "GET", "url": "{{base_url}}/brands/options" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Thuong hieu Test\",\"description\":\"\",\"status\":\"active\"}" }, "url": "{{base_url}}/brands" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Thuong hieu Updated\"}" }, "url": "{{base_url}}/brands/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/brands/1" } }
+      ]
+    },
+    {
+      "name": "Locations",
+      "item": [
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/locations" } },
+        { "name": "Options", "request": { "method": "GET", "url": "{{base_url}}/locations/options" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Ke C1\",\"description\":\"Ke trung bay\",\"status\":\"active\"}" }, "url": "{{base_url}}/locations" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Ke C1 updated\"}" }, "url": "{{base_url}}/locations/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/locations/1" } }
+      ]
+    },
+    {
+      "name": "Product Units",
+      "item": [
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/product-units" } },
+        { "name": "Options", "request": { "method": "GET", "url": "{{base_url}}/product-units/options" } },
+        { "name": "Tao", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Tan\"}" }, "url": "{{base_url}}/product-units" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Ta\"}" }, "url": "{{base_url}}/product-units/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/product-units/1" } }
+      ]
+    },
+    {
+      "name": "Product Attributes",
+      "item": [
+        { "name": "Danh sach (kem values)", "request": { "method": "GET", "url": "{{base_url}}/product-attributes" } },
+        { "name": "Tao (kem values)", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Huong vi\",\"sort_order\":0,\"values\":[\"Dau\",\"Cam\",\"Nho\"]}" }, "url": "{{base_url}}/product-attributes" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Huong vi updated\",\"values\":[\"Dau\",\"Cam\",\"Nho\",\"Tao\"]}" }, "url": "{{base_url}}/product-attributes/1" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/product-attributes/1" } }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        { "name": "Danh sach", "request": { "method": "GET", "url": "{{base_url}}/products?search=&type=&category_id=&brand_id=&is_active=&status=&sort_by=id&sort_order=desc&limit=20" } },
+        { "name": "Chi tiet", "request": { "method": "GET", "url": "{{base_url}}/products/1" } },
+        { "name": "Tao - Hang hoa", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Nuoc ngot Coca Cola 330ml\",\"type\":\"product\",\"category_id\":3,\"brand_id\":1,\"base_unit_id\":3,\"base_price\":10000,\"cost_price\":7500,\"barcode\":\"8935001730115\",\"min_stock\":10,\"max_stock\":1000,\"point\":1,\"location_ids\":[1,2],\"unit_conversions\":[{\"unit_id\":5,\"conversion_value\":24,\"price\":230000}]}" }, "url": "{{base_url}}/products" } },
+        { "name": "Tao - Dich vu", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Phi lap dat\",\"type\":\"service\",\"base_price\":50000,\"cost_price\":0}" }, "url": "{{base_url}}/products" } },
+        { "name": "Tao - Combo", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Combo nuoc ngot x6\",\"type\":\"combo\",\"base_price\":55000,\"cost_price\":45000,\"components\":[{\"product_id\":1,\"quantity\":6}]}" }, "url": "{{base_url}}/products" } },
+        { "name": "Tao - Hang co variants", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Ao thun basic\",\"type\":\"product\",\"base_price\":199000,\"cost_price\":80000,\"variants\":[{\"name\":\"Den - M\",\"price\":199000,\"cost_price\":80000,\"attribute_value_ids\":[4,7]},{\"name\":\"Den - L\",\"price\":199000,\"cost_price\":80000,\"attribute_value_ids\":[4,8]}]}" }, "url": "{{base_url}}/products" } },
+        { "name": "Cap nhat", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"Hang hoa updated\",\"base_price\":12000}" }, "url": "{{base_url}}/products/1" } },
+        { "name": "Sao chep", "request": { "method": "POST", "url": "{{base_url}}/products/1/copy" } },
+        { "name": "Toggle active", "request": { "method": "PUT", "url": "{{base_url}}/products/1/toggle-active" } },
+        { "name": "Xoa", "request": { "method": "DELETE", "url": "{{base_url}}/products/1" } },
+        { "name": "Bulk toggle active", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2,3],\"is_active\":false}" }, "url": "{{base_url}}/products/bulk-toggle-active" } },
+        { "name": "Bulk category", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2],\"category_id\":1}" }, "url": "{{base_url}}/products/bulk-category" } },
+        { "name": "Bulk point", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2,3],\"point\":5}" }, "url": "{{base_url}}/products/bulk-point" } },
+        { "name": "Bulk delete", "request": { "method": "DELETE", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode": "raw", "raw": "{\"ids\":[1,2]}" }, "url": "{{base_url}}/products/bulk-delete" } },
+        { "name": "Export", "request": { "method": "GET", "url": "{{base_url}}/products/export" } },
+        { "name": "Export (filter)", "request": { "method": "GET", "url": "{{base_url}}/products/export?type=product&is_active=true" } },
+        { "name": "Import", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [{"key":"file","type":"file","src":""}] }, "url": "{{base_url}}/products/import" } },
+        { "name": "Ton kho theo chi nhanh", "request": { "method": "GET", "url": "{{base_url}}/products/1/inventory" } },
+        { "name": "The kho (lich su)", "request": { "method": "GET", "url": "{{base_url}}/products/1/stock-card?organization_id=&type=&from_date=&to_date=" } },
+        { "name": "Phan tich hieu qua KD", "request": { "method": "GET", "url": "{{base_url}}/products/1/analytics?from_date=2026-01-01&to_date=2026-12-31" } }
+      ]
+    }
+  ]
+}
