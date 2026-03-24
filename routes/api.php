@@ -103,4 +103,7 @@ Route::middleware(['auth:sanctum', 'set.permissions.team', 'log.activity'])->gro
     Route::prefix('suppliers')->group(function () {
         require base_path('app/Modules/Purchase/Routes/supplier.php');
     });
+    Route::prefix('stock-disposals')->group(function () {
+        require base_path('app/Modules/Inventory/Routes/stock-disposal.php');
+    });
 });
