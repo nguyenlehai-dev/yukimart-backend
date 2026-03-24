@@ -1,0 +1,90 @@
+<?php
+
+namespace App\Modules\Core\Services;
+
+use App\Modules\Core\Exports\PermissionsExport;
+use App\Modules\Core\Imports\PermissionsImport;
+use App\Modules\Core\Models\Permission;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+class PermissionService
+{
+    public function stats(array $filters): array
+    {
+        $base = Permission::filter($filters);
+
+        return ['total' => (clone $base)->count()];
+    }
+
+    public function index(array $filters, int $limit)
+    {
+        return Permission::with('parent')
+            ->filter($filters)
+            ->treeOrder()
+            ->paginate($limit);
+    }
+
+    public function tree($parentIdProvided, $parentId)
+    {
+        $query = Permission::query()
+            ->when($parentIdProvided, fn ($q) => $q->where('parent_id', $parentId));
+
+        $items = $query->orderBy('sort_order')->orderBy('id')->get();
+
+        return $this->buildTree($items);
+    }
+
+    public function show(Permission $permission): Permission
+    {
+        return $permission->load(['parent', 'children']);
+    }
+
+    public function store(array $data): Permission
+    {
+        $data['guard_name'] = $data['guard_name'] ?? config('auth.defaults.guard', 'web');
+
+        return Permission::create($data);
+    }
+
+    public function update(Permission $permission, array $data): Permission
+    {
+        $permission->update($data);
+
+        return $permission;
+    }
+
+    public function destroy(Permission $permission): void
+    {
+        $permission->delete();
+    }
+
+    public function bulkDestroy(array $ids): void
+    {
+        Permission::whereIn('id', $ids)->delete();
+    }
+
+    public function export(array $filters): BinaryFileResponse
+    {
+        return Excel::download(new PermissionsExport($filters), 'permissions.xlsx');
+    }
+
+    public function import($file): void
+    {
+        Excel::import(new PermissionsImport, $file);
+    }
+
+    public function buildTree(Collection $items): Collection
+    {
+        $grouped = $items->groupBy('parent_id');
+        $builder = function ($parentId) use ($grouped, &$builder) {
+            return ($grouped->get($parentId) ?? collect())
+                ->sortBy('sort_order')
+                ->map(fn ($item) => $item->setRelation('children', $builder($item->id)))
+                ->values();
+        };
+
+        return $builder(null);
+    }
+}

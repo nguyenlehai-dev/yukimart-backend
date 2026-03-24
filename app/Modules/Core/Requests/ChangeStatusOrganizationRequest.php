@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Modules\Core\Requests;
+
+use App\Modules\Core\Enums\StatusEnum;
+use Illuminate\Foundation\Http\FormRequest;
+
+class ChangeStatusOrganizationRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'status' => ['required', StatusEnum::rule()],
+        ];
+    }
+
+    public function bodyParameters(): array
+    {
+        return [];
+    }
+}

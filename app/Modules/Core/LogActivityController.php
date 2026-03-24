@@ -1,0 +1,162 @@
+<?php
+
+namespace App\Modules\Core;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Core\Models\LogActivity;
+use App\Modules\Core\Requests\BulkDestroyLogActivityRequest;
+use App\Modules\Core\Requests\DestroyByDateLogActivityRequest;
+use App\Modules\Core\Requests\FilterRequest;
+use App\Modules\Core\Resources\LogActivityCollection;
+use App\Modules\Core\Resources\LogActivityResource;
+use App\Modules\Core\Services\LogActivityService;
+
+/**
+ * @group Core - LogActivity
+ * @header X-Organization-Id ID tổ chức cần làm việc (bắt buộc với endpoint yêu cầu auth). Example: 1
+ *
+ * Quản lý nhật ký truy cập: thống kê, danh sách, chi tiết, xuất Excel, xóa, xóa hàng loạt, xóa theo thời gian, xóa toàn bộ.
+ */
+class LogActivityController extends Controller
+{
+    public function __construct(private LogActivityService $logActivityService) {}
+
+    /**
+     * Thống kê nhật ký
+     *
+     * Tổng số bản ghi sau khi áp dụng bộ lọc.
+     *
+     * @queryParam search string Tìm kiếm (description, route, ip_address, country, user_type). Example: 127.0.0.1
+     * @queryParam from_date date Lọc từ ngày (Y-m-d). Example: 2026-01-01
+     * @queryParam to_date date Lọc đến ngày (Y-m-d). Example: 2026-12-31
+     * @queryParam method_type string GET, POST, PUT, PATCH, DELETE. Example: GET
+     * @queryParam status_code integer Mã HTTP (200, 400, 500...). Example: 200
+     * @queryParam sort_by string id, description, route, method_type, status_code, ip_address, country, created_at. Example: created_at
+     * @queryParam sort_order string asc, desc. Example: desc
+     * @queryParam limit integer 1-100. Example: 10
+     *
+     * @response 200 {"success": true, "data": {"total": 100}}
+     */
+    public function stats(FilterRequest $request)
+    {
+        return $this->success($this->logActivityService->stats($request->all()));
+    }
+
+    /**
+     * Danh sách nhật ký
+     *
+     * @queryParam search string Tìm kiếm. Example: login
+     * @queryParam from_date date Từ ngày. Example: 2026-01-01
+     * @queryParam to_date date Đến ngày. Example: 2026-12-31
+     * @queryParam method_type string GET, POST, PUT, PATCH, DELETE.
+     * @queryParam status_code integer Mã HTTP.
+     * @queryParam sort_by string Example: created_at
+     * @queryParam sort_order string asc, desc. Example: desc
+     * @queryParam limit integer Example: 10
+     *
+     * @apiResourceCollection App\Modules\Core\Resources\LogActivityCollection
+     *
+     * @apiResourceModel App\Modules\Core\Models\LogActivity paginate=10
+     *
+     * @apiResourceAdditional success=true
+     */
+    public function index(FilterRequest $request)
+    {
+        $logs = $this->logActivityService->index($request->all(), (int) ($request->limit ?? 10));
+
+        return $this->successCollection(new LogActivityCollection($logs));
+    }
+
+    /**
+     * Xuất danh sách nhật ký
+     *
+     * Áp dụng cùng bộ lọc với index. Trả về file Excel.
+     *
+     * @queryParam search string Tìm kiếm (description, route, ip_address, country, user_type).
+     * @queryParam from_date date Lọc từ ngày (Y-m-d). Example: 2026-01-01
+     * @queryParam to_date date Lọc đến ngày (Y-m-d). Example: 2026-12-31
+     * @queryParam method_type string GET, POST, PUT, PATCH, DELETE. Example: GET
+     * @queryParam status_code integer Mã HTTP (200, 400, 500...). Example: 200
+     * @queryParam sort_by string id, description, route, method_type, status_code, ip_address, country, created_at.
+     * @queryParam sort_order string asc, desc. Example: desc
+     *
+     * Xuất ra các trường: id, description, user_type, user_id, user_name, organization_id, route, method_type, status_code, ip_address, country, user_agent, request_data, created_at, updated_at.
+     */
+    public function export(FilterRequest $request)
+    {
+        return $this->logActivityService->export($request->all());
+    }
+
+    /**
+     * Chi tiết nhật ký
+     *
+     * @urlParam logActivity integer required ID nhật ký. Example: 1
+     *
+     * @apiResource App\Modules\Core\Resources\LogActivityResource
+     *
+     * @apiResourceModel App\Modules\Core\Models\LogActivity with=user,organization
+     *
+     * @apiResourceAdditional success=true
+     */
+    public function show(LogActivity $logActivity)
+    {
+        $logActivity = $this->logActivityService->show($logActivity);
+
+        return $this->successResource(new LogActivityResource($logActivity));
+    }
+
+    /**
+     * Xóa nhật ký
+     *
+     * @urlParam logActivity integer required ID nhật ký. Example: 1
+     *
+     * @response 200 {"success": true, "message": "Đã xóa nhật ký thành công!"}
+     */
+    public function destroy(LogActivity $logActivity)
+    {
+        $this->logActivityService->destroy($logActivity);
+
+        return $this->success(null, 'Đã xóa nhật ký thành công!');
+    }
+
+    /**
+     * Xóa hàng loạt nhật ký
+     *
+     * @bodyParam ids array required Danh sách ID. Example: [1, 2, 3]
+     *
+     * @response 200 {"success": true, "message": "Đã xóa thành công 3 nhật ký!"}
+     */
+    public function bulkDestroy(BulkDestroyLogActivityRequest $request)
+    {
+        $count = $this->logActivityService->bulkDestroy($request->ids);
+
+        return $this->success(null, "Đã xóa thành công {$count} nhật ký!");
+    }
+
+    /**
+     * Xóa nhật ký theo khoảng thời gian
+     *
+     * @bodyParam from_date date required Từ ngày (Y-m-d). Example: 2026-01-01
+     * @bodyParam to_date date required Đến ngày (Y-m-d). Example: 2026-01-31
+     *
+     * @response 200 {"success": true, "message": "Đã xóa thành công 10 nhật ký trong khoảng thời gian!"}
+     */
+    public function destroyByDate(DestroyByDateLogActivityRequest $request)
+    {
+        $count = $this->logActivityService->destroyByDate($request->from_date, $request->to_date);
+
+        return $this->success(null, "Đã xóa thành công {$count} nhật ký trong khoảng thời gian!");
+    }
+
+    /**
+     * Xóa toàn bộ nhật ký
+     *
+     * @response 200 {"success": true, "message": "Đã xóa toàn bộ 100 nhật ký!"}
+     */
+    public function destroyAll()
+    {
+        $count = $this->logActivityService->destroyAll();
+
+        return $this->success(null, "Đã xóa toàn bộ {$count} nhật ký!");
+    }
+}
