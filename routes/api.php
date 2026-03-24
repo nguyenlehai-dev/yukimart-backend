@@ -94,4 +94,13 @@ Route::middleware(['auth:sanctum', 'set.permissions.team', 'log.activity'])->gro
     Route::prefix('price-lists')->group(function () {
         require base_path('app/Modules/Product/Routes/price-list.php');
     });
+    Route::prefix('purchase-returns')->group(function () {
+        require base_path('app/Modules/Purchase/Routes/purchase-return.php');
+    });
+    Route::prefix('purchase-orders')->group(function () {
+        require base_path('app/Modules/Purchase/Routes/purchase-order.php');
+    });
+    Route::prefix('suppliers')->group(function () {
+        require base_path('app/Modules/Purchase/Routes/supplier.php');
+    });
 });

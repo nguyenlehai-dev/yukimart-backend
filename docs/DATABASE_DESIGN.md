@@ -663,5 +663,94 @@ Phạm vi áp dụng bảng giá theo chi nhánh (pivot).
 
 ---
 
-*File được cập nhật theo migration trong `database/migrations/`.*
+## 8. Nhap hang & Tra hang nhap (Purchase)
+
+### `suppliers`
+Nha cung cap.
+
+| Cot | Kieu | Nullable | Mac dinh | Ghi chu |
+|-----|------|----------|----------|---------|
+| id | bigint | No | — | PK |
+| code | varchar | No | — | UNIQUE, auto: NCC000001 |
+| name | varchar | No | — | |
+| phone | varchar | Yes | null | |
+| email | varchar | Yes | null | |
+| tax_code | varchar | Yes | null | |
+| address | text | Yes | null | |
+| status | varchar | No | active | |
+| debt | decimal(18,2) | No | 0 | Cong no hien tai |
+| note | text | Yes | null | |
+| created_by/updated_by | bigint | Yes | null | FK → users |
+| timestamps | | | | |
+
+### `purchase_orders`
+Phieu nhap hang.
+
+| Cot | Kieu | Nullable | Mac dinh | Ghi chu |
+|-----|------|----------|----------|---------|
+| id | bigint | No | — | PK |
+| code | varchar | No | — | UNIQUE, auto: NH000001 |
+| supplier_id | bigint | Yes | null | FK → suppliers |
+| organization_id | bigint | No | — | FK → organizations |
+| status | varchar | No | completed | draft/completed/cancelled |
+| total_amount | decimal(18,2) | No | 0 | |
+| discount | decimal(18,2) | No | 0 | |
+| paid_amount | decimal(18,2) | No | 0 | |
+| debt_amount | decimal(18,2) | No | 0 | |
+| note | text | Yes | null | |
+| order_date | datetime | Yes | null | |
+| created_by/updated_by | bigint | Yes | null | FK → users |
+| timestamps | | | | |
+
+### `purchase_order_items`
+
+| Cot | Kieu | Nullable | Ghi chu |
+|-----|------|----------|---------|
+| id | bigint | No | PK |
+| purchase_order_id | bigint | No | FK → purchase_orders, CASCADE |
+| product_id | bigint | No | FK → products |
+| variant_id | bigint | Yes | FK → product_variants |
+| unit_id | bigint | Yes | FK → product_units |
+| quantity | decimal(15,2) | No | |
+| price | decimal(18,2) | No | Gia nhap |
+| discount | decimal(18,2) | No | |
+| amount | decimal(18,2) | No | = qty * price - discount |
+| timestamps | | | |
+
+### `purchase_returns`
+Phieu tra hang nhap.
+
+| Cot | Kieu | Nullable | Mac dinh | Ghi chu |
+|-----|------|----------|----------|---------|
+| id | bigint | No | — | PK |
+| code | varchar | No | — | UNIQUE, auto: TH000001 |
+| supplier_id | bigint | Yes | null | FK → suppliers |
+| organization_id | bigint | No | — | FK → organizations |
+| purchase_order_id | bigint | Yes | null | FK → purchase_orders, null = tra nhanh |
+| status | varchar | No | completed | completed/cancelled |
+| total_amount | decimal(18,2) | No | 0 | Tong tien hang tra |
+| supplier_paid | decimal(18,2) | No | 0 | Tien NCC tra lai |
+| debt_amount | decimal(18,2) | No | 0 | Cong no |
+| note | text | Yes | null | |
+| return_date | datetime | Yes | null | |
+| created_by/updated_by | bigint | Yes | null | FK → users |
+| timestamps | | | | |
+
+### `purchase_return_items`
+
+| Cot | Kieu | Nullable | Ghi chu |
+|-----|------|----------|---------|
+| id | bigint | No | PK |
+| purchase_return_id | bigint | No | FK → purchase_returns, CASCADE |
+| product_id | bigint | No | FK → products |
+| variant_id | bigint | Yes | FK → product_variants |
+| unit_id | bigint | Yes | FK → product_units |
+| quantity | decimal(15,2) | No | |
+| price | decimal(18,2) | No | |
+| amount | decimal(18,2) | No | |
+| timestamps | | | |
+
+---
+
+*File duoc cap nhat theo migration trong `database/migrations/`.*
 
