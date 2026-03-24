@@ -61,6 +61,16 @@ app/Modules/
     ├── Resources/
     ├── Routes/
     └── Services/
+└── Product/
+    ├── Controllers/
+    ├── Enums/
+    ├── Exports/
+    ├── Imports/
+    ├── Models/
+    ├── Requests/
+    ├── Resources/
+    ├── Routes/
+    └── Services/
 ```
 
 ## 3) Quy ước luồng xử lý

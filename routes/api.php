@@ -71,4 +71,24 @@ Route::middleware(['auth:sanctum', 'set.permissions.team', 'log.activity'])->gro
     Route::prefix('settings')->group(function () {
         require base_path('app/Modules/Core/Routes/setting.php');
     });
+
+    // ── Module Product (Hàng hóa) ──
+    Route::prefix('product-categories')->group(function () {
+        require base_path('app/Modules/Product/Routes/product_category.php');
+    });
+    Route::prefix('brands')->group(function () {
+        require base_path('app/Modules/Product/Routes/brand.php');
+    });
+    Route::prefix('locations')->group(function () {
+        require base_path('app/Modules/Product/Routes/location.php');
+    });
+    Route::prefix('product-units')->group(function () {
+        require base_path('app/Modules/Product/Routes/product_unit.php');
+    });
+    Route::prefix('product-attributes')->group(function () {
+        require base_path('app/Modules/Product/Routes/product_attribute.php');
+    });
+    Route::prefix('products')->group(function () {
+        require base_path('app/Modules/Product/Routes/product.php');
+    });
 });

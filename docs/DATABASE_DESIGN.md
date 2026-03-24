@@ -404,4 +404,208 @@ Các bảng: `document_types`, `document_issuing_agencies`, `document_issuing_le
 
 ---
 
+## 6. Hàng hóa & Tồn kho (Module Product)
+
+### `product_categories`
+Nhóm hàng hóa phân cấp (cây theo parent_id).
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| name | varchar(255) | No | — | |
+| slug | varchar(255) | No | — | UNIQUE |
+| description | text | Yes | null | |
+| status | varchar(255) | No | 'active' | active, inactive |
+| parent_id | bigint unsigned | Yes | null | FK → product_categories.id (cha) |
+| sort_order | int unsigned | No | 0 | |
+| created_by | bigint unsigned | Yes | null | FK → users.id |
+| updated_by | bigint unsigned | Yes | null | FK → users.id |
+| created_at | timestamp | Yes | null | |
+| updated_at | timestamp | Yes | null | |
+
+### `brands`
+Thương hiệu sản phẩm.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| name | varchar(255) | No | — | |
+| slug | varchar(255) | No | — | UNIQUE |
+| description | text | Yes | null | |
+| status | varchar(255) | No | 'active' | |
+| created_by / updated_by | bigint unsigned | Yes | null | FK → users.id |
+| timestamps | | | | |
+
+### `locations`
+Vị trí lưu trữ/trưng bày sản phẩm.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| name | varchar(255) | No | — | |
+| description | text | Yes | null | |
+| organization_id | bigint unsigned | Yes | null | FK → organizations.id (chi nhánh) |
+| status | varchar(255) | No | 'active' | |
+| created_by / updated_by | bigint unsigned | Yes | null | FK → users.id |
+| timestamps | | | | |
+
+### `product_attributes`
+Thuộc tính sản phẩm (Size, Màu sắc, Chất liệu...).
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| name | varchar(255) | No | — | |
+| sort_order | int unsigned | No | 0 | |
+| timestamps | | | | |
+
+### `product_attribute_values`
+Giá trị thuộc tính (S, M, L, Đỏ, Xanh...).
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| attribute_id | bigint unsigned | No | — | FK → product_attributes.id, CASCADE |
+| value | varchar(255) | No | — | |
+| sort_order | int unsigned | No | 0 | |
+| timestamps | | | | |
+
+### `product_units`
+Đơn vị tính sản phẩm.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| name | varchar(100) | No | — | Cái, Chai, Thùng, Kg... |
+| timestamps | | | | |
+
+### `products`
+Bảng sản phẩm chính. Hỗ trợ 4 loại: product, service, combo, manufacturing.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| code | varchar(50) | No | — | UNIQUE, auto-gen (SP000001, DV000001, CB000001, SX000001) |
+| barcode | varchar(100) | Yes | null | UNIQUE |
+| name | varchar(255) | No | — | |
+| slug | varchar(255) | No | — | UNIQUE |
+| description | text | Yes | null | |
+| type | varchar(255) | No | 'product' | product, service, combo, manufacturing |
+| category_id | bigint unsigned | Yes | null | FK → product_categories.id |
+| brand_id | bigint unsigned | Yes | null | FK → brands.id |
+| base_unit_id | bigint unsigned | Yes | null | FK → product_units.id (ĐVT cơ bản) |
+| base_price | decimal(15,2) | No | 0 | Giá bán |
+| cost_price | decimal(15,2) | No | 0 | Giá vốn |
+| weight | decimal(10,3) | Yes | null | Trọng lượng (g) |
+| allow_negative_stock | boolean | No | false | Cho phép tồn kho âm |
+| min_stock | int | No | 0 | Tồn kho tối thiểu |
+| max_stock | int | Yes | null | Tồn kho tối đa |
+| status | varchar(255) | No | 'active' | active, inactive, discontinued |
+| is_active | boolean | No | true | Đang kinh doanh |
+| point | int | No | 0 | Điểm tích lũy |
+| created_by / updated_by | bigint unsigned | Yes | null | FK → users.id |
+| timestamps | | | | |
+
+**Index:** type, is_active, (category_id + is_active).
+
+### `product_variants`
+Phiên bản sản phẩm (theo thuộc tính: size, màu...).
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK, auto increment |
+| product_id | bigint unsigned | No | — | FK → products.id, CASCADE |
+| sku | varchar(100) | No | — | UNIQUE |
+| barcode | varchar(100) | Yes | null | UNIQUE |
+| price | decimal(15,2) | No | 0 | Giá bán (override) |
+| cost_price | decimal(15,2) | No | 0 | |
+| name | varchar(255) | No | — | VD: "Đỏ - XL" |
+| is_active | boolean | No | true | |
+| timestamps | | | | |
+
+### `product_variant_attributes`
+Pivot: variant ↔ attribute_value.
+
+| Cột | Kiểu | Ràng buộc / Ghi chú |
+|-----|------|---------------------|
+| id | bigint unsigned | PK |
+| variant_id | bigint unsigned | FK → product_variants.id, CASCADE |
+| attribute_value_id | bigint unsigned | FK → product_attribute_values.id, CASCADE |
+| — | — | UNIQUE(variant_id, attribute_value_id) |
+
+### `product_components`
+Thành phần của Combo / Hàng sản xuất.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK |
+| parent_product_id | bigint unsigned | No | — | FK → products.id, CASCADE |
+| component_product_id | bigint unsigned | No | — | FK → products.id, CASCADE |
+| quantity | decimal(10,3) | No | — | Số lượng |
+| unit_id | bigint unsigned | Yes | null | FK → product_units.id |
+| timestamps | | | | |
+| — | — | — | — | UNIQUE(parent_product_id, component_product_id) |
+
+### Pivot tables
+
+#### `product_location`
+| Cột | Kiểu | Ràng buộc / Ghi chú |
+|-----|------|---------------------|
+| product_id | bigint unsigned | FK → products.id, CASCADE |
+| location_id | bigint unsigned | FK → locations.id, CASCADE |
+| — | — | PK(product_id, location_id) |
+
+#### `product_product_unit`
+Quy đổi đơn vị tính (VD: 1 thùng = 24 chai).
+
+| Cột | Kiểu | Ràng buộc / Ghi chú |
+|-----|------|---------------------|
+| id | bigint unsigned | PK |
+| product_id | bigint unsigned | FK → products.id, CASCADE |
+| unit_id | bigint unsigned | FK → product_units.id, CASCADE |
+| conversion_value | decimal(10,3) | Hệ số quy đổi (default 1) |
+| price | decimal(15,2) nullable | Giá bán theo ĐVT |
+| barcode | varchar(100) nullable | Mã vạch theo ĐVT |
+| — | — | UNIQUE(product_id, unit_id) |
+
+### `inventory`
+Tồn kho theo chi nhánh (organization) + variant.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK |
+| product_id | bigint unsigned | No | — | FK → products.id, CASCADE |
+| variant_id | bigint unsigned | Yes | null | FK → product_variants.id, CASCADE |
+| organization_id | bigint unsigned | No | — | FK → organizations.id, CASCADE |
+| quantity | decimal(15,3) | No | 0 | |
+| cost_price | decimal(15,2) | No | 0 | Giá vốn trung bình |
+| timestamps | | | | |
+| — | — | — | — | UNIQUE(product_id, variant_id, organization_id) |
+
+### `inventory_transactions`
+Thẻ kho — lịch sử giao dịch tồn kho.
+
+| Cột | Kiểu | Nullable | Mặc định | Ràng buộc / Ghi chú |
+|-----|------|----------|----------|---------------------|
+| id | bigint unsigned | No | — | PK |
+| inventory_id | bigint unsigned | No | — | FK → inventory.id, CASCADE |
+| type | varchar(255) | No | — | import, export, sale, return, adjust, transfer |
+| quantity_change | decimal(15,3) | No | — | +/- số lượng |
+| quantity_after | decimal(15,3) | No | — | Tồn sau giao dịch |
+| cost_price | decimal(15,2) | No | 0 | Giá vốn tại thời điểm |
+| reference_type | varchar(255) | Yes | null | Polymorphic |
+| reference_id | bigint unsigned | Yes | null | Polymorphic |
+| note | text | Yes | null | |
+| created_by | bigint unsigned | Yes | null | FK → users.id |
+| created_at | timestamp | Yes | null | |
+
+**Quan hệ:**
+- `products` n-1 với `product_categories`, `brands`, `product_units`.
+- `products` n-n với `locations` (qua `product_location`), `product_units` (qua `product_product_unit`).
+- `products` 1-n với `product_variants`, `product_components`, `inventory`.
+- `products` 1-n (polymorphic) với `media` qua `collection_name = product-images`.
+- `inventory` 1-n với `inventory_transactions`.
+
+---
+
 *File được cập nhật theo migration trong `database/migrations/`.*
