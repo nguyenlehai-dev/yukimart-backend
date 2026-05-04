@@ -46,51 +46,10 @@ class PermissionSeeder extends Seeder
             'stats', 'index', 'tree', 'show', 'store', 'update', 'destroy',
             'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
         ],
-        // Post - Bài viết
-        'posts' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-            'incrementView',
-        ],
-        // Post - Danh mục bài viết
-        'post-categories' => [
-            'stats', 'index', 'tree', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-        ],
         // Core - Nhật ký truy cập
         'log-activities' => [
             'stats', 'index', 'show', 'export', 'destroy', 'bulkDestroy',
             'destroyByDate', 'destroyAll',
-        ],
-        // Document - Văn bản
-        'documents' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-        ],
-        // Document - Loại văn bản
-        'document-types' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-        ],
-        // Document - Cơ quan ban hành
-        'issuing-agencies' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-        ],
-        // Document - Cấp ban hành
-        'issuing-levels' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-        ],
-        // Document - Người ký
-        'document-signers' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
-        ],
-        // Document - Lĩnh vực
-        'document-fields' => [
-            'stats', 'index', 'show', 'store', 'update', 'destroy',
-            'bulkDestroy', 'bulkUpdateStatus', 'changeStatus', 'export', 'import',
         ],
         // Core - Cấu hình hệ thống
         'settings' => [
@@ -135,15 +94,7 @@ class PermissionSeeder extends Seeder
         'permissions' => 'Quyền',
         'roles' => 'Vai trò',
         'organizations' => 'Tổ chức',
-        'posts' => 'Bài viết',
-        'post-categories' => 'Danh mục bài viết',
         'log-activities' => 'Nhật ký truy cập',
-        'documents' => 'Văn bản',
-        'document-types' => 'Loại văn bản',
-        'issuing-agencies' => 'Cơ quan ban hành',
-        'issuing-levels' => 'Cấp ban hành',
-        'document-signers' => 'Người ký',
-        'document-fields' => 'Lĩnh vực',
         'settings' => 'Cấu hình hệ thống',
     ];
 
@@ -207,14 +158,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'Admin', 'guard_name' => self::GUARD],
             ['organization_id' => null]
         );
-        Role::firstOrCreate(
-            ['name' => 'Editor', 'guard_name' => self::GUARD],
-            ['organization_id' => null]
-        );
-        Role::firstOrCreate(
-            ['name' => 'Vai trò mẫu', 'guard_name' => self::GUARD],
-            ['organization_id' => null]
-        );
 
         // Chuẩn hóa dữ liệu cũ nếu còn role theo organization.
         Role::query()->update(['organization_id' => null]);
@@ -233,24 +176,11 @@ class PermissionSeeder extends Seeder
         if ($admin) {
             $admin->syncPermissions($allPermissionNames);
         }
-
-        $editorPermissionNames = $this->getEditorPermissionNames();
-        $editor = Role::where('name', 'Editor')->where('guard_name', self::GUARD)->first();
-        if ($editor) {
-            $editor->syncPermissions($editorPermissionNames);
-        }
-
-        $samplePermissionNames = $this->getSamplePermissionNames();
-        $sampleRole = Role::where('name', 'Vai trò mẫu')->where('guard_name', self::GUARD)->first();
-        if ($sampleRole) {
-            $sampleRole->syncPermissions($samplePermissionNames);
-        }
     }
 
     /**
      * Tạo user cố định để đăng nhập kiểm tra và gán role:
      * - admin@example.com => Super Admin
-     * - basic@example.com => Vai trò mẫu (quyền cơ bản)
      */
     protected function seedFixedUsersAndAssignRoles(): void
     {
@@ -261,7 +191,6 @@ class PermissionSeeder extends Seeder
         setPermissionsTeamId($defaultOrganization->id);
 
         $superAdmin = Role::where('name', 'Super Admin')->where('guard_name', self::GUARD)->first();
-        $sampleRole = Role::where('name', 'Vai trò mẫu')->where('guard_name', self::GUARD)->first();
 
         $superAdminUser = User::updateOrCreate(
             ['email' => 'admin@example.com'],
@@ -281,25 +210,6 @@ class PermissionSeeder extends Seeder
         if ($superAdmin) {
             $superAdminUser->syncRoles([$superAdmin]);
         }
-
-        $basicUser = User::updateOrCreate(
-            ['email' => 'basic@example.com'],
-            [
-                'name' => 'basic',
-                'user_name' => 'basic',
-                'password' => 'quandcore**11',
-                'status' => StatusEnum::Active->value,
-                'email_verified_at' => now(),
-            ]
-        );
-        $basicUser->forceFill([
-            'created_by' => $superAdminUser->id,
-            'updated_by' => $superAdminUser->id,
-        ])->save();
-
-        if ($sampleRole) {
-            $basicUser->syncRoles([$sampleRole]);
-        }
     }
 
     /** Lấy toàn bộ tên permission (resource.action). */
@@ -313,33 +223,5 @@ class PermissionSeeder extends Seeder
         }
 
         return $names;
-    }
-
-    /** Permission cho role Editor: chỉ posts và post-categories. */
-    protected function getEditorPermissionNames(): array
-    {
-        $names = [];
-        foreach (['posts' => self::$PERMISSIONS['posts'], 'post-categories' => self::$PERMISSIONS['post-categories']] as $resource => $actions) {
-            foreach ($actions as $action) {
-                $names[] = "{$resource}.{$action}";
-            }
-        }
-
-        return $names;
-    }
-
-    /** Permission cho Vai trò mẫu: chỉ xem bài viết và danh mục (index, show, tree, stats, incrementView). */
-    protected function getSamplePermissionNames(): array
-    {
-        return [
-            'posts.stats',
-            'posts.index',
-            'posts.show',
-            'posts.incrementView',
-            'post-categories.stats',
-            'post-categories.index',
-            'post-categories.tree',
-            'post-categories.show',
-        ];
     }
 }

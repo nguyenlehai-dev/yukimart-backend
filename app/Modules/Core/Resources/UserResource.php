@@ -12,12 +12,16 @@ class UserResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $roleNames = $this->resource->roles()->pluck('name')->unique()->values()->all();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
             'user_name' => $this->user_name,
             'status' => $this->status,
+            'roles' => $roleNames,
+            'is_super_admin' => in_array('Super Admin', $roleNames, true),
             'created_by' => $this->creator?->name ?? 'N/A',
             'updated_by' => $this->editor?->name ?? 'N/A',
             'assignments' => $this->roleAssignments(),

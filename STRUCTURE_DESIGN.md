@@ -5,7 +5,7 @@ Tài liệu mô tả cấu trúc thư mục hiện tại của hệ thống theo
 ## 1) Tổng quan thư mục gốc
 
 ```text
-hailn-core/
+yukimart-backend/
 ├── app/
 ├── bootstrap/
 ├── config/
@@ -31,47 +31,22 @@ app/Modules/
 │   ├── Requests/
 │   ├── Routes/
 │   └── Services/
-├── Core/
-│   ├── Enums/
-│   ├── Exports/
-│   ├── Imports/
-│   ├── Middleware/
-│   ├── Models/
-│   ├── Requests/
-│   ├── Resources/
-│   ├── Routes/
-│   ├── Services/
-│   └── Traits/
-├── Post/
-│   ├── Enums/
-│   ├── Exports/
-│   ├── Imports/
-│   ├── Models/
-│   ├── Requests/
-│   ├── Resources/
-│   ├── Routes/
-│   └── Services/
-└── Document/
-    ├── Controllers/
+└── Core/
     ├── Enums/
     ├── Exports/
     ├── Imports/
+    ├── Middleware/
     ├── Models/
     ├── Requests/
     ├── Resources/
     ├── Routes/
-    └── Services/
-└── Product/
-    ├── Controllers/
-    ├── Enums/
-    ├── Exports/
-    ├── Imports/
-    ├── Models/
-    ├── Requests/
-    ├── Resources/
-    ├── Routes/
-    └── Services/
+    ├── Services/
+    └── Traits/
 ```
+
+Hiện tại dự án chỉ giữ lại nền tảng người dùng/phân quyền (Auth + Core). Các module nghiệp vụ
+(Product, Purchase, Inventory, Document, Post, ShopAdmin) đã được gỡ bỏ để tối ưu và sẽ được
+nhập lại bằng Excel hoặc dựng lại theo yêu cầu mới.
 
 ## 3) Quy ước luồng xử lý
 
@@ -81,16 +56,27 @@ app/Modules/
 - `Resource`: chuẩn hóa output API.
 - `Routes`: tách riêng theo module và resource.
 
-## 4) Vị trí tài liệu liên quan
+## 4) Cơ sở dữ liệu
+
+- DBMS: **PostgreSQL 17** (xem `compose.yaml`).
+- Cấu hình kết nối: `config/database.php` (connection `pgsql`).
+- Bảng còn lại sau khi reset:
+  - `users`, `password_reset_tokens`, `personal_access_tokens` (Sanctum)
+  - `organizations` (cấu trúc cây)
+  - Spatie Permission: `roles`, `permissions`, `model_has_roles`, `model_has_permissions`, `role_has_permissions`
+  - `log_activities` (nhật ký truy cập)
+  - `media` (Spatie Media Library)
+  - `settings` (cấu hình hệ thống)
+  - `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `sessions`
+
+## 5) Vị trí tài liệu liên quan
 
 - Tài liệu API: `docs/api`.
 - Phân tích nghiệp vụ/đề xuất: `docs/answer`.
-- Thiết kế cơ sở dữ liệu: `docs/DATABASE_DESIGN.md`.
 
-## 5) Kiểm tra cập nhật tài liệu khi thay đổi kiến trúc
+## 6) Kiểm tra cập nhật tài liệu khi thay đổi kiến trúc
 
 Khi thêm module mới hoặc thay đổi cấu trúc lớn, cần cập nhật đồng thời:
 
 - `STRUCTURE_DESIGN.md` (file này).
-- `docs/DATABASE_DESIGN.md` nếu có migration mới.
 - `docs/api/*.md` và tài liệu Scribe nếu thay đổi controller/endpoint API.

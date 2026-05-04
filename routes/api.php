@@ -8,20 +8,63 @@ Route::prefix('auth')->middleware('log.activity')->group(function () {
     require base_path('app/Modules/Auth/Routes/auth.php');
 });
 
+// Module ShopProduct (rebuild tối thiểu sau khi reset DB) — products + import Excel.
+Route::prefix('shop/products')->group(function () {
+    $c = \App\Modules\ShopProduct\Controllers\ShopProductController::class;
+    Route::get('/export', [$c, 'export']);
+    Route::post('/import-preview', [$c, 'importPreview']);
+    Route::post('/import', [$c, 'import']);
+    Route::post('/{id}/adjust-stock', [$c, 'adjustStock'])->whereNumber('id');
+    Route::get('/', [$c, 'index']);
+    Route::post('/', [$c, 'store']);
+    Route::get('/{id}', [$c, 'show'])->whereNumber('id');
+    Route::put('/{id}', [$c, 'update'])->whereNumber('id');
+    Route::patch('/{id}', [$c, 'update'])->whereNumber('id');
+    Route::delete('/{id}', [$c, 'destroy'])->whereNumber('id');
+});
+
+// Categories/Brands/Inventory derive từ shop_products đã import.
+Route::get('/shop/categories', [\App\Modules\ShopProduct\Controllers\ShopFacetController::class, 'categories']);
+Route::get('/shop/brands', [\App\Modules\ShopProduct\Controllers\ShopFacetController::class, 'brands']);
+Route::get('/shop/brands/public', [\App\Modules\ShopProduct\Controllers\ShopFacetController::class, 'brands']);
+Route::get('/shop/inventory/stats', [\App\Modules\ShopProduct\Controllers\ShopFacetController::class, 'inventoryStats']);
+
+// Generic shop entities — 1 engine xử lý mọi entity admin lưu dạng JSON.
+// Whitelist các entity dùng generic; các path khác sẽ rơi xuống stub catch-all.
+$genericEntities = implode('|', [
+    'customers', 'customer-groups',
+    'orders', 'invoices', 'sales-returns',
+    'suppliers', 'purchase-invoices', 'purchase-orders', 'purchase-returns',
+    'news', 'promotions', 'sections',
+    'price-lists',
+    'shipments', 'shipping-partners',
+    'stock-checks', 'stock-disposals', 'stock-transfers', 'stock-internals',
+    'inventory-history',
+    'reports-sales', 'reports-finance',
+]);
+Route::prefix('shop')->group(function () use ($genericEntities) {
+    $g = \App\Modules\ShopProduct\Controllers\GenericShopController::class;
+    Route::get('/{entity}/export', [$g, 'export'])->where('entity', $genericEntities);
+    Route::post('/{entity}/import-preview', [$g, 'importPreview'])->where('entity', $genericEntities);
+    Route::post('/{entity}/import', [$g, 'import'])->where('entity', $genericEntities);
+    Route::get('/{entity}', [$g, 'index'])->where('entity', $genericEntities);
+    Route::post('/{entity}', [$g, 'store'])->where('entity', $genericEntities);
+    Route::get('/{entity}/{id}', [$g, 'show'])->where('entity', $genericEntities)->whereNumber('id');
+    Route::put('/{entity}/{id}', [$g, 'update'])->where('entity', $genericEntities)->whereNumber('id');
+    Route::patch('/{entity}/{id}', [$g, 'update'])->where('entity', $genericEntities)->whereNumber('id');
+    Route::delete('/{entity}/{id}', [$g, 'destroy'])->where('entity', $genericEntities)->whereNumber('id');
+});
+
+// Inventory history (rỗng — không track movement trong phiên bản tối thiểu).
+Route::get('/shop/inventory/history', [\App\Modules\ShopProduct\Controllers\ShopFacetController::class, 'inventoryHistory']);
+
+// Stub cho mọi endpoint /shop/* còn lại (vd /shop/sections/reorder, /shop/news/categories).
+// Trả empty list cho GET, 501 cho mutation. TODO: gỡ khi module thật được dựng lại.
+Route::any('shop/{any}', [\App\Modules\ShopStub\ShopStubController::class, 'handle'])
+    ->where('any', '.*');
+
 // Cấu hình công khai - không cần xác thực
 Route::get('/settings/public', [\App\Modules\Core\SettingController::class, 'public'])->middleware('log.activity');
-Route::get('/document-signers/public', [\App\Modules\Document\DocumentSignerController::class, 'public'])->middleware('log.activity');
-Route::get('/document-signers/public-options', [\App\Modules\Document\DocumentSignerController::class, 'publicOptions'])->middleware('log.activity');
-Route::get('/document-fields/public', [\App\Modules\Document\DocumentFieldController::class, 'public'])->middleware('log.activity');
-Route::get('/document-fields/public-options', [\App\Modules\Document\DocumentFieldController::class, 'publicOptions'])->middleware('log.activity');
-Route::get('/document-types/public', [\App\Modules\Document\DocumentTypeController::class, 'public'])->middleware('log.activity');
-Route::get('/document-types/public-options', [\App\Modules\Document\DocumentTypeController::class, 'publicOptions'])->middleware('log.activity');
-Route::get('/issuing-levels/public', [\App\Modules\Document\IssuingLevelController::class, 'public'])->middleware('log.activity');
-Route::get('/issuing-levels/public-options', [\App\Modules\Document\IssuingLevelController::class, 'publicOptions'])->middleware('log.activity');
-Route::get('/issuing-agencies/public', [\App\Modules\Document\IssuingAgencyController::class, 'public'])->middleware('log.activity');
-Route::get('/issuing-agencies/public-options', [\App\Modules\Document\IssuingAgencyController::class, 'publicOptions'])->middleware('log.activity');
-Route::get('/post-categories/public', [\App\Modules\Post\PostCategoryController::class, 'public'])->middleware('log.activity');
-Route::get('/post-categories/public-options', [\App\Modules\Post\PostCategoryController::class, 'publicOptions'])->middleware('log.activity');
 Route::get('/organizations/public', [\App\Modules\Core\OrganizationController::class, 'public'])->middleware('log.activity');
 Route::get('/organizations/public-options', [\App\Modules\Core\OrganizationController::class, 'publicOptions'])->middleware('log.activity');
 
@@ -31,12 +74,6 @@ Route::middleware(['auth:sanctum', 'set.permissions.team', 'log.activity'])->gro
 
     Route::prefix('users')->group(function () {
         require base_path('app/Modules/Core/Routes/user.php');
-    });
-    Route::prefix('posts')->group(function () {
-        require base_path('app/Modules/Post/Routes/post.php');
-    });
-    Route::prefix('post-categories')->group(function () {
-        require base_path('app/Modules/Post/Routes/post_category.php');
     });
     Route::prefix('permissions')->group(function () {
         require base_path('app/Modules/Core/Routes/permission.php');
@@ -50,63 +87,7 @@ Route::middleware(['auth:sanctum', 'set.permissions.team', 'log.activity'])->gro
     Route::prefix('log-activities')->group(function () {
         require base_path('app/Modules/Core/Routes/log_activity.php');
     });
-    Route::prefix('documents')->group(function () {
-        require base_path('app/Modules/Document/Routes/document.php');
-    });
-    Route::prefix('document-types')->group(function () {
-        require base_path('app/Modules/Document/Routes/document_type.php');
-    });
-    Route::prefix('issuing-agencies')->group(function () {
-        require base_path('app/Modules/Document/Routes/issuing_agency.php');
-    });
-    Route::prefix('issuing-levels')->group(function () {
-        require base_path('app/Modules/Document/Routes/issuing_level.php');
-    });
-    Route::prefix('document-signers')->group(function () {
-        require base_path('app/Modules/Document/Routes/document_signer.php');
-    });
-    Route::prefix('document-fields')->group(function () {
-        require base_path('app/Modules/Document/Routes/document_field.php');
-    });
     Route::prefix('settings')->group(function () {
         require base_path('app/Modules/Core/Routes/setting.php');
-    });
-
-    // ── Module Product (Hàng hóa) ──
-    Route::prefix('product-categories')->group(function () {
-        require base_path('app/Modules/Product/Routes/product_category.php');
-    });
-    Route::prefix('brands')->group(function () {
-        require base_path('app/Modules/Product/Routes/brand.php');
-    });
-    Route::prefix('locations')->group(function () {
-        require base_path('app/Modules/Product/Routes/location.php');
-    });
-    Route::prefix('product-units')->group(function () {
-        require base_path('app/Modules/Product/Routes/product_unit.php');
-    });
-    Route::prefix('product-attributes')->group(function () {
-        require base_path('app/Modules/Product/Routes/product_attribute.php');
-    });
-    Route::prefix('products')->group(function () {
-        require base_path('app/Modules/Product/Routes/product.php');
-    });
-    Route::prefix('price-lists')->group(function () {
-        require base_path('app/Modules/Product/Routes/price-list.php');
-    });
-    Route::prefix('purchase-returns')->group(function () {
-        require base_path('app/Modules/Purchase/Routes/purchase-return.php');
-    });
-    Route::prefix('purchase-orders')->group(function () {
-        require base_path('app/Modules/Purchase/Routes/purchase-order.php');
-    });
-    Route::prefix('suppliers')->group(function () {
-        require base_path('app/Modules/Purchase/Routes/supplier.php');
-    });
-    Route::prefix('stock-disposals')->group(function () {
-        require base_path('app/Modules/Inventory/Routes/stock-disposal.php');
-    });
-    Route::prefix('stock-checks')->group(function () {
-        require base_path('app/Modules/Inventory/Routes/stock-check.php');
     });
 });
