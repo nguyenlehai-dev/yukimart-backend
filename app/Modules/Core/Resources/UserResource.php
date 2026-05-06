@@ -20,6 +20,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'user_name' => $this->user_name,
             'status' => $this->status,
+            'avatar' => $this->getFirstMediaUrl('avatar') ?: null,
             'roles' => $roleNames,
             'is_super_admin' => in_array('Super Admin', $roleNames, true),
             'created_by' => $this->creator?->name ?? 'N/A',

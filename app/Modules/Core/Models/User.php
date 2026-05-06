@@ -6,11 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends Authenticatable implements HasMedia
 {
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles, InteractsWithMedia, Notifiable;
 
     /** Spatie luôn dùng guard 'web' cho quyền (dùng chung cho cả web và API Sanctum). */
     protected $guard_name = 'web';
@@ -24,6 +26,7 @@ class User extends Authenticatable
         'name',
         'email',
         'user_name',
+        'email_verified_at',
         'password',
         'status',
         'created_by',

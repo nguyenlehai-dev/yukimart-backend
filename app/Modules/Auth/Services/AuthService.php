@@ -6,12 +6,51 @@ use App\Modules\Core\Enums\UserStatusEnum;
 use App\Modules\Core\Models\Organization;
 use App\Modules\Core\Models\User;
 use App\Modules\Core\Resources\UserResource;
+use App\Modules\ShopProduct\Models\ShopEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 
 class AuthService
 {
+    public function register(array $data): array
+    {
+        // Nếu config bật require email verification → tạo user chưa verify, gửi link.
+        $requireVerify = (bool) config('auth.require_email_verification', false);
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'user_name' => $data['user_name'] ?? null,
+            'password' => $data['password'],
+            'status' => UserStatusEnum::Active->value,
+            'email_verified_at' => $requireVerify ? null : now(),
+        ]);
+
+        if ($requireVerify) {
+            try {
+                $user->notify(new \App\Modules\Auth\Notifications\VerifyEmailNotification());
+            } catch (\Throwable $e) {
+                // Mail driver chưa cấu hình — log để dev biết, không fail register.
+                \Log::warning('[register] sendVerifyEmail failed: '.$e->getMessage());
+            }
+        }
+
+        $this->ensureCustomerEntry($user);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return [
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => (new UserResource($user))->resolve(),
+            'available_organizations' => [],
+            'current_organization_id' => null,
+            'roles' => [],
+            'permissions' => [],
+            'abilities' => [],
+        ];
+    }
+
     public function login(string $login, string $password): array
     {
         $user = User::where('email', $login)
@@ -33,6 +72,8 @@ class AuthService
                 'message' => 'Tài khoản của bạn đã bị khóa',
             ];
         }
+
+        $this->ensureCustomerEntry($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
         $organizations = $this->getAccessibleOrganizations($user);
@@ -169,6 +210,62 @@ class AuthService
     protected function hasOrganizationAccess(int $userId, int $organizationId): bool
     {
         return in_array($organizationId, $this->getAccessibleOrganizationIds($userId), true);
+    }
+
+    /**
+     * Đảm bảo mỗi user khách hàng có 1 bản ghi tương ứng trong bảng customers
+     * (shop_entries entity='customers') để admin CRM thấy. Lazy-create: nếu user
+     * đã có entry thì bỏ qua. Gọi từ register() và login() để tự backfill cho
+     * cả user cũ.
+     */
+    protected function ensureCustomerEntry(User $user): void
+    {
+        // Bỏ qua các user nội bộ (đã có role bất kỳ trên team nào) — họ là
+        // staff/admin, không phải khách hàng. Spatie roles có team scoping nên
+        // dùng raw query thay vì $user->roles()->exists() (phụ thuộc context).
+        $tableNames = config('permission.table_names');
+        $columnNames = config('permission.column_names');
+        $morphKey = $columnNames['model_morph_key'] ?? 'model_id';
+        $hasAnyRole = DB::table($tableNames['model_has_roles'] ?? 'model_has_roles')
+            ->where($morphKey, $user->id)
+            ->where('model_type', User::class)
+            ->exists();
+        if ($hasAnyRole) {
+            return;
+        }
+
+        $exists = ShopEntry::where('entity', 'customers')
+            ->where(function ($q) use ($user) {
+                $q->where('data->user_id', (int) $user->id)
+                    ->orWhere('data->user_id', (string) $user->id)
+                    ->orWhere('data->email', $user->email);
+            })
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $joinedAt = $user->created_at?->format('d/m/Y') ?? now()->format('d/m/Y');
+        $data = [
+            'user_id' => (int) $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => '',
+            'group_id' => 3, // Khách lẻ mặc định
+            'orders_count' => 0,
+            'total_spent' => 0,
+            'joined_at' => $joinedAt,
+            'active' => true,
+        ];
+
+        ShopEntry::create([
+            'entity' => 'customers',
+            'data' => $data,
+            'search_text' => mb_substr(implode(' ', array_filter([
+                $user->name, $user->email, $joinedAt,
+            ])), 0, 4000),
+        ]);
     }
 
     /**

@@ -25,6 +25,10 @@ class SetPermissionsTeamId
             $organizationId = $this->resolveRequestedOrganizationId($request);
 
             if ($organizationId === null) {
+                if (! $this->userHasAnyOrganizationAccess((int) $user->id)) {
+                    return $next($request);
+                }
+
                 throw ValidationException::withMessages([
                     'organization_id' => ['Vui lòng gửi header X-Organization-Id để xác định tổ chức làm việc.'],
                 ]);
@@ -97,6 +101,31 @@ class SetPermissionsTeamId
             ->where($modelMorphKey, $userId)
             ->where('model_type', $modelType)
             ->where($teamForeignKey, $organizationId)
+            ->exists();
+    }
+
+    protected function userHasAnyOrganizationAccess(int $userId): bool
+    {
+        $tableNames = config('permission.table_names');
+        $columnNames = config('permission.column_names');
+        $modelMorphKey = $columnNames['model_morph_key'] ?? 'model_id';
+        $teamForeignKey = $columnNames['team_foreign_key'] ?? 'organization_id';
+        $modelType = \App\Modules\Core\Models\User::class;
+
+        $hasRole = DB::table($tableNames['model_has_roles'] ?? 'model_has_roles')
+            ->where($modelMorphKey, $userId)
+            ->where('model_type', $modelType)
+            ->whereNotNull($teamForeignKey)
+            ->exists();
+
+        if ($hasRole) {
+            return true;
+        }
+
+        return DB::table($tableNames['model_has_permissions'] ?? 'model_has_permissions')
+            ->where($modelMorphKey, $userId)
+            ->where('model_type', $modelType)
+            ->whereNotNull($teamForeignKey)
             ->exists();
     }
 }
