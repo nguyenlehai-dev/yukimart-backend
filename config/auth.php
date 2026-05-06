@@ -19,6 +19,11 @@ return [
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
+    // Bật yêu cầu xác thực email khi register. Khi true: email_verified_at = null
+    // sau khi đăng ký + gửi mail VerifyEmailNotification. Mặc định false để
+    // không phá flow hiện tại; bật khi đã cấu hình SMTP.
+    'require_email_verification' => env('AUTH_REQUIRE_EMAIL_VERIFICATION', false),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards

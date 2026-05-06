@@ -5,12 +5,18 @@ namespace App\Modules\Auth;
 use App\Http\Controllers\Controller;
 use App\Modules\Auth\Requests\ForgotPasswordRequest;
 use App\Modules\Auth\Requests\LoginRequest;
+use App\Modules\Auth\Requests\RegisterRequest;
 use App\Modules\Auth\Requests\ResetPasswordRequest;
 use App\Modules\Auth\Requests\SwitchOrganizationRequest;
+use App\Modules\Auth\Notifications\VerifyEmailNotification;
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Auth\Services\CaslAbilityConverter;
+use App\Modules\Auth\Services\RecaptchaService;
+use App\Modules\Core\Models\User;
+use Illuminate\Support\Facades\URL;
 use App\Modules\Core\Resources\UserResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * @group Auth
@@ -19,7 +25,10 @@ use Illuminate\Http\Request;
  */
 class AuthController extends Controller
 {
-    public function __construct(private AuthService $authService) {}
+    public function __construct(
+        private AuthService $authService,
+        private RecaptchaService $recaptcha,
+    ) {}
 
     /**
      * Đăng nhập
@@ -35,6 +44,9 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request)
     {
+        if (! $this->recaptcha->verify($request->input('recaptcha_token'), 'login')) {
+            return $this->forbidden('Xác thực bảo mật thất bại. Vui lòng thử lại.');
+        }
         $result = $this->authService->login($request->email, $request->password);
 
         if (! $result['ok']) {
@@ -46,6 +58,23 @@ class AuthController extends Controller
         }
 
         return $this->success($result['data'], 'Đăng nhập thành công.');
+    }
+
+    /**
+     * Đăng ký tài khoản khách hàng.
+     *
+     * Tài khoản mới không có quyền quản trị shop. Frontend dùng token này cho khu vực tài khoản khách hàng.
+     *
+     * @unauthenticated
+     */
+    public function register(RegisterRequest $request)
+    {
+        if (! $this->recaptcha->verify($request->input('recaptcha_token'), 'register')) {
+            return $this->forbidden('Xác thực bảo mật thất bại. Vui lòng thử lại.');
+        }
+        $data = $this->authService->register($request->validated());
+
+        return $this->success($data, 'Đăng ký thành công.', 201);
     }
 
     /**
@@ -83,6 +112,27 @@ class AuthController extends Controller
         return $this->success(null, 'Đã đăng xuất');
     }
 
+    public function updateAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        $user = $request->user();
+        $user->clearMediaCollection('avatar');
+
+        $file = $request->file('avatar');
+        $extension = $file->getClientOriginalExtension() ?: 'jpg';
+        $user->addMedia($file)
+            ->usingName('avatar-'.$user->id)
+            ->usingFileName('avatar-'.$user->id.'-'.Str::random(8).'.'.$extension)
+            ->toMediaCollection('avatar', config('media-library.disk_name', 'public'));
+
+        return $this->success([
+            'user' => (new UserResource($user->fresh()))->resolve(),
+        ], 'Đã cập nhật ảnh đại diện.');
+    }
+
     /**
      * Chuyển tổ chức làm việc
      *
@@ -92,6 +142,46 @@ class AuthController extends Controller
      *
      * @response 200 {"success": true, "message": "Đã chuyển tổ chức làm việc.", "data": {"current_organization_id": 2, "current_organization": {"id": 2, "name": "Sở Nội vụ"}, "roles": ["admin"], "permissions": ["users.index", "users.store"], "abilities": [{"action": "index", "subject": "User"}, {"action": "store", "subject": "User"}]}}
      */
+    /**
+     * Xác thực email qua signed URL (FE chuyển query về đây).
+     *
+     * @unauthenticated
+     */
+    public function verifyEmail(Request $request, int $id, string $hash)
+    {
+        if (! $request->hasValidSignature()) {
+            return $this->error('Link xác thực không hợp lệ hoặc đã hết hạn', 400, null, 'INVALID_SIGNATURE');
+        }
+        $user = User::find($id);
+        if (! $user) {
+            return $this->notFound('Không tìm thấy tài khoản');
+        }
+        if (! hash_equals(sha1($user->email), $hash)) {
+            return $this->error('Link xác thực không khớp', 400, null, 'HASH_MISMATCH');
+        }
+        if ($user->email_verified_at === null) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+        return $this->success(['email_verified_at' => $user->email_verified_at?->toIso8601String()], 'Đã xác thực email');
+    }
+
+    /**
+     * Gửi lại email xác thực cho user đang đăng nhập.
+     */
+    public function resendVerification(Request $request)
+    {
+        $user = $request->user();
+        if (! $user) {
+            return $this->unauthorized();
+        }
+        if ($user->email_verified_at !== null) {
+            return $this->success(null, 'Email đã được xác thực trước đó');
+        }
+        $user->notify(new VerifyEmailNotification());
+        return $this->success(null, 'Đã gửi email xác thực — kiểm tra hộp thư.');
+    }
+
     public function switchOrganization(SwitchOrganizationRequest $request)
     {
         $result = $this->authService->switchOrganization($request->user(), (int) $request->organization_id);

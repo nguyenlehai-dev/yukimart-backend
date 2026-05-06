@@ -12,13 +12,26 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(fn () => null);
+
         $middleware->alias([
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'set.permissions.team' => \App\Modules\Core\Middleware\SetPermissionsTeamId::class,
+            'shop.admin' => \App\Modules\Core\Middleware\EnsureShopAdmin::class,
             'log.activity' => \App\Modules\Core\Middleware\LogActivity::class,
+            'user.active' => \App\Modules\Core\Middleware\EnsureUserActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->renderable(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Chưa xác thực',
+                    'code' => 'UNAUTHORIZED',
+                ], 401);
+            }
+        });
         $exceptions->renderable(function (\Illuminate\Validation\ValidationException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
