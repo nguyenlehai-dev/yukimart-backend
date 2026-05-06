@@ -5,9 +5,11 @@ namespace App\Modules\ShopProduct\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\ShopProduct\Imports\ShopProductImport;
 use App\Modules\ShopProduct\Models\ShopEntry;
+use App\Modules\ShopProduct\Validation\EntityRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,14 +30,50 @@ class GenericShopController extends Controller
             $query->where('search_text', 'ilike', "%{$q}%");
         }
 
+        // Filter theo status / user_id (qua expression index — fast).
+        if ($status = trim((string) $request->query('status', ''))) {
+            $query->where('data->status', $status);
+        }
+        if ($userId = (int) $request->query('user_id', 0)) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('data->user_id', $userId)
+                    ->orWhere('data->user_id', (string) $userId);
+            });
+        }
+        // group_id filter cho customers (so sánh cả int + string).
+        if ($groupId = $request->query('group_id', null)) {
+            $gid = (int) $groupId;
+            if ($gid > 0) {
+                $query->where(function ($q) use ($gid) {
+                    $q->where('data->group_id', $gid)
+                        ->orWhere('data->group_id', (string) $gid);
+                });
+            }
+        }
+        // active filter (boolean) — string 'true'/'false' hoặc 1/0.
+        $activeQ = $request->query('active', null);
+        if ($activeQ !== null && $activeQ !== '') {
+            $val = filter_var($activeQ, FILTER_VALIDATE_BOOLEAN);
+            $query->where('data->active', $val);
+        }
+
         $query->orderByDesc('id');
 
-        if ($request->boolean('all')) {
-            $items = $query->limit(500)->get();
+        if ($request->boolean('all') || $entity === 'sections') {
+            // Cho phép admin truyền `limit` để lấy nhiều hơn default. Cap ở 50k
+            // để tránh phá memory; nếu cần nhiều hơn nên dùng pagination.
+            $defaultCap = $entity === 'sections' ? 1000 : 5000;
+            $cap = (int) $request->query('limit', $defaultCap);
+            $cap = max(1, min($cap, 50000));
+            $items = $query->limit($cap)->get();
+            $data = $items->map(fn ($e) => $this->serialize($e));
+            if ($entity === 'sections') {
+                $data = $data->sortBy(fn ($row) => (int) ($row['sort_order'] ?? $row['sortOrder'] ?? 0))->values();
+            }
 
             return response()->json([
                 'success' => true,
-                'data' => $items->map(fn ($e) => $this->serialize($e))->all(),
+                'data' => $data->all(),
                 'meta' => [
                     'total' => $items->count(),
                     'perPage' => $items->count(),
@@ -63,6 +101,49 @@ class GenericShopController extends Controller
         ]);
     }
 
+    public function publicIndex(Request $request, string $entity): JsonResponse
+    {
+        $query = ShopEntry::query()->where('entity', $entity);
+
+        if ($q = trim((string) $request->query('q', ''))) {
+            $query->where('search_text', 'ilike', "%{$q}%");
+        }
+
+        if ($entity === 'news') {
+            $query->where('data->status', $request->query('status', 'published'));
+        }
+        if ($entity === 'promotions') {
+            $query->whereIn('data->status', ['active', 'scheduled']);
+        }
+
+        $limit = max(1, min((int) $request->query('limit', 100), 200));
+        $items = $query->orderByDesc('id')->limit($limit)->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $items->map(fn ($e) => $this->serialize($e))->all(),
+            'meta' => [
+                'total' => $items->count(),
+                'perPage' => $items->count(),
+                'currentPage' => 1,
+                'lastPage' => 1,
+            ],
+        ]);
+    }
+
+    public function showBySlug(string $entity, string $slug): JsonResponse
+    {
+        $entry = ShopEntry::where('entity', $entity)
+            ->where('data->slug', $slug)
+            ->first();
+
+        if (! $entry) {
+            return $this->notFound('Không tìm thấy bản ghi');
+        }
+
+        return $this->success($this->serialize($entry));
+    }
+
     public function show(string $entity, int $id): JsonResponse
     {
         $entry = ShopEntry::where('entity', $entity)->find($id);
@@ -75,6 +156,10 @@ class GenericShopController extends Controller
 
     public function store(Request $request, string $entity): JsonResponse
     {
+        $rules = EntityRules::rulesFor($entity, false);
+        if ($rules) {
+            Validator::make($request->all(), $rules)->validate();
+        }
         $data = $this->normalizeData($request->all());
         $entry = ShopEntry::create([
             'entity' => $entity,
@@ -91,12 +176,115 @@ class GenericShopController extends Controller
         if (! $entry) {
             return $this->notFound('Không tìm thấy bản ghi');
         }
+        $rules = EntityRules::rulesFor($entity, true);
+        if ($rules) {
+            Validator::make($request->all(), $rules)->validate();
+        }
         $data = $this->normalizeData(array_merge((array) $entry->data, $request->all()));
         $entry->data = $data;
         $entry->search_text = $this->buildSearchText($data);
         $entry->save();
 
         return $this->success($this->serialize($entry->fresh()), 'Đã cập nhật');
+    }
+
+    public function updateStatus(Request $request, string $entity, int $id): JsonResponse
+    {
+        $entry = ShopEntry::where('entity', $entity)->find($id);
+        if (! $entry) {
+            return $this->notFound('Không tìm thấy bản ghi');
+        }
+
+        $status = trim((string) $request->input('status', ''));
+        if ($status === '') {
+            return $this->error('Trạng thái không hợp lệ.', 422);
+        }
+
+        $data = (array) $entry->data;
+        $data['status'] = $status;
+        if ($entity === 'news' && $status === 'published' && empty($data['published_at'])) {
+            $data['published_at'] = now()->toDateString();
+        }
+        $entry->update([
+            'data' => $data,
+            'search_text' => $this->buildSearchText($data),
+        ]);
+
+        return $this->success($this->serialize($entry->fresh()), 'Đã cập nhật trạng thái');
+    }
+
+    public function updateSectionByKey(Request $request, string $key): JsonResponse
+    {
+        $payload = $this->normalizeData($request->all());
+        $payload['section_key'] = $payload['section_key'] ?? $key;
+
+        $entry = $this->findSectionByKey($key);
+        if (! $entry) {
+            $entry = ShopEntry::create([
+                'entity' => 'sections',
+                'data' => $payload,
+                'search_text' => $this->buildSearchText($payload),
+            ]);
+
+            return $this->success($this->serialize($entry), 'Đã tạo khu vực hiển thị', 201);
+        }
+
+        $data = array_merge((array) $entry->data, $payload);
+        $entry->update([
+            'data' => $data,
+            'search_text' => $this->buildSearchText($data),
+        ]);
+
+        return $this->success($this->serialize($entry->fresh()), 'Đã cập nhật khu vực hiển thị');
+    }
+
+    public function destroySectionByKey(string $key): JsonResponse
+    {
+        $entry = $this->findSectionByKey($key);
+        if (! $entry) {
+            return $this->notFound('Không tìm thấy khu vực hiển thị');
+        }
+
+        $entry->delete();
+
+        return $this->success(null, 'Đã xóa khu vực hiển thị');
+    }
+
+    public function syncSectionProducts(Request $request, string $key): JsonResponse
+    {
+        $entry = $this->findSectionByKey($key);
+        if (! $entry) {
+            return $this->notFound('Không tìm thấy khu vực hiển thị');
+        }
+
+        $productIds = array_values(array_unique(array_map('intval', (array) $request->input('product_ids', []))));
+        $data = (array) $entry->data;
+        $data['product_ids'] = $productIds;
+        $entry->update([
+            'data' => $data,
+            'search_text' => $this->buildSearchText($data),
+        ]);
+
+        return $this->success($this->serialize($entry->fresh()), 'Đã cập nhật sản phẩm trong khu vực');
+    }
+
+    public function reorderSections(Request $request): JsonResponse
+    {
+        $order = (array) $request->input('order', []);
+        foreach (array_values($order) as $idx => $key) {
+            $entry = $this->findSectionByKey((string) $key);
+            if (! $entry) {
+                continue;
+            }
+            $data = (array) $entry->data;
+            $data['sort_order'] = $idx;
+            $entry->update([
+                'data' => $data,
+                'search_text' => $this->buildSearchText($data),
+            ]);
+        }
+
+        return $this->success(['order' => array_values($order)], 'Đã sắp xếp khu vực hiển thị');
     }
 
     public function destroy(string $entity, int $id): JsonResponse
@@ -190,6 +378,7 @@ class GenericShopController extends Controller
                 }
                 if (empty($payload)) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -210,6 +399,7 @@ class GenericShopController extends Controller
                     } else {
                         $skipped++;
                     }
+
                     continue;
                 }
 
@@ -300,6 +490,19 @@ class GenericShopController extends Controller
         unset($raw['id'], $raw['createdAt'], $raw['updatedAt'], $raw['created_at'], $raw['updated_at']);
 
         return $raw;
+    }
+
+    private function findSectionByKey(string $key): ?ShopEntry
+    {
+        $entry = ShopEntry::where('entity', 'sections')
+            ->where('data->section_key', $key)
+            ->first();
+
+        if (! $entry && ctype_digit($key)) {
+            $entry = ShopEntry::where('entity', 'sections')->find((int) $key);
+        }
+
+        return $entry;
     }
 
     private function buildSearchText(array $data): string

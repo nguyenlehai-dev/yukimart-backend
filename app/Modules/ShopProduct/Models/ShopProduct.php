@@ -14,13 +14,15 @@ class ShopProduct extends Model
 
     protected $fillable = [
         'sku', 'barcode', 'name', 'slug', 'product_type', 'category_path', 'category', 'brand',
-        'sale_price', 'cost', 'stock', 'reserved', 'threshold', 'unit', 'status',
+        'original_price', 'sale_price', 'wholesale_price', 'cost', 'stock', 'reserved', 'threshold', 'unit', 'status',
         'description', 'image_urls', 'is_hot_deal', 'is_suggested', 'warehouse',
         'weight', 'points', 'extra',
     ];
 
     protected $casts = [
+        'original_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
+        'wholesale_price' => 'decimal:2',
         'cost' => 'decimal:2',
         'stock' => 'integer',
         'reserved' => 'integer',

@@ -3,8 +3,10 @@
 namespace App\Modules\ShopProduct\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\ShopProduct\Models\ShopEntry;
 use App\Modules\ShopProduct\Models\ShopProduct;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -42,7 +44,7 @@ class ShopFacetController extends Controller
         // Tách path bằng các separator phổ biến: ">>", "/", ">", "->" (theo thứ tự ưu tiên).
         // Mỗi prefix path → 1 node trong cây. Cộng dồn count cho cả ancestor.
         $nodesByPath = [];   // 'a||b' => ['id', 'parentId', 'name', 'slug', 'fullPath', 'productCount']
-        $idCounter = 1;
+        $idCounter = 1000000;
 
         foreach ($rawRows as $row) {
             $segments = $this->splitCategoryPath((string) $row->category);
@@ -106,6 +108,19 @@ class ShopFacetController extends Controller
             return $n;
         }, $list);
 
+        $existingKeys = [];
+        foreach ($data as $item) {
+            $existingKeys[strtolower((string) ($item['parentId'] ?? '')).'|'.mb_strtolower((string) $item['name'])] = true;
+        }
+        foreach (ShopEntry::where('entity', 'categories')->orderBy('id')->get() as $entry) {
+            $item = $this->serializeCategory($entry);
+            $key = strtolower((string) ($item['parentId'] ?? '')).'|'.mb_strtolower((string) $item['name']);
+            if (! isset($existingKeys[$key])) {
+                $data[] = $item;
+                $existingKeys[$key] = true;
+            }
+        }
+
         return [
             'success' => true,
             'data' => $data,
@@ -116,6 +131,57 @@ class ShopFacetController extends Controller
                 'lastPage' => 1,
             ],
         ];
+    }
+
+    public function storeCategory(Request $request): JsonResponse
+    {
+        $entry = ShopEntry::create([
+            'entity' => 'categories',
+            'data' => $this->normalizeCategoryData($request->all()),
+            'search_text' => $this->searchText($request->all()),
+        ]);
+        $this->invalidateFacetCache();
+
+        return $this->success($this->serializeCategory($entry), 'Đã tạo danh mục', 201);
+    }
+
+    public function updateCategory(Request $request, int $id): JsonResponse
+    {
+        $entry = ShopEntry::where('entity', 'categories')->find($id);
+        if (! $entry) {
+            if ($id < 1000000) {
+                return $this->notFound('Không tìm thấy danh mục');
+            }
+
+            $entry = ShopEntry::create([
+                'entity' => 'categories',
+                'data' => $this->normalizeCategoryData($request->all()),
+                'search_text' => $this->searchText($request->all()),
+            ]);
+            $this->invalidateFacetCache();
+
+            return $this->success($this->serializeCategory($entry), 'Đã lưu danh mục');
+        }
+
+        $data = array_merge((array) $entry->data, $this->normalizeCategoryData($request->all()));
+        $entry->update([
+            'data' => $data,
+            'search_text' => $this->searchText($data),
+        ]);
+        $this->invalidateFacetCache();
+
+        return $this->success($this->serializeCategory($entry->fresh()), 'Đã cập nhật danh mục');
+    }
+
+    public function destroyCategory(int $id): JsonResponse
+    {
+        $entry = ShopEntry::where('entity', 'categories')->find($id);
+        if ($entry) {
+            $entry->delete();
+            $this->invalidateFacetCache();
+        }
+
+        return $this->success(['deleted' => $entry ? 1 : 0], 'Đã xóa danh mục');
     }
 
     /** Tách "Bánh Kẹo, Sữa>>Bánh>>Mochi" → ['Bánh Kẹo, Sữa', 'Bánh', 'Mochi']. */
@@ -140,42 +206,110 @@ class ShopFacetController extends Controller
 
     public function brands(): JsonResponse
     {
-        $rows = ShopProduct::query()
-            ->whereNotNull('brand')
-            ->where('brand', '!=', '')
-            ->select('brand')
-            ->groupBy('brand')
-            ->orderBy('brand')
-            ->pluck('brand')
-            ->values();
+        $payload = Cache::remember('shop_facets:brands:v1', 60, function () {
+            $rows = ShopProduct::query()
+                ->whereNotNull('brand')
+                ->where('brand', '!=', '')
+                ->select('brand')
+                ->groupBy('brand')
+                ->orderBy('brand')
+                ->pluck('brand')
+                ->values();
 
-        $data = $rows->map(function (string $name, int $idx) {
-            $slug = Str::slug($name);
+            $data = $rows->map(function (string $name, int $idx) {
+                $slug = Str::slug($name);
+
+                return [
+                    'id' => 1000000 + $idx,
+                    'name' => $name,
+                    'slug' => $slug,
+                    'logoSource' => null,
+                    'logo' => null,
+                    'link' => '/brands/'.$slug,
+                    'active' => true,
+                    'sortOrder' => $idx,
+                    'createdAt' => null,
+                    'updatedAt' => null,
+                ];
+            })->all();
+
+            $existing = [];
+            foreach ($data as $item) {
+                $existing[mb_strtolower((string) $item['name'])] = true;
+            }
+            foreach (ShopEntry::where('entity', 'brands')->orderBy('id')->get() as $entry) {
+                $item = $this->serializeBrand($entry);
+                $key = mb_strtolower((string) $item['name']);
+                if (! isset($existing[$key])) {
+                    $data[] = $item;
+                    $existing[$key] = true;
+                }
+            }
 
             return [
-                'id' => $idx + 1,
-                'name' => $name,
-                'slug' => $slug,
-                'logoSource' => null,
-                'logo' => null,
-                'link' => '/brands/'.$slug,
-                'active' => true,
-                'sortOrder' => $idx,
-                'createdAt' => null,
-                'updatedAt' => null,
+                'success' => true,
+                'data' => $data,
+                'meta' => [
+                    'total' => \count($data),
+                    'perPage' => \count($data),
+                    'currentPage' => 1,
+                    'lastPage' => 1,
+                ],
             ];
-        })->all();
+        });
 
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-            'meta' => [
-                'total' => \count($data),
-                'perPage' => \count($data),
-                'currentPage' => 1,
-                'lastPage' => 1,
-            ],
+        return response()->json($payload);
+    }
+
+    public function storeBrand(Request $request): JsonResponse
+    {
+        $entry = ShopEntry::create([
+            'entity' => 'brands',
+            'data' => $this->normalizeBrandData($request->all()),
+            'search_text' => $this->searchText($request->all()),
         ]);
+        $this->invalidateFacetCache();
+
+        return $this->success($this->serializeBrand($entry), 'Đã tạo thương hiệu', 201);
+    }
+
+    public function updateBrand(Request $request, int $id): JsonResponse
+    {
+        $entry = ShopEntry::where('entity', 'brands')->find($id);
+        if (! $entry) {
+            if ($id < 1000000) {
+                return $this->notFound('Không tìm thấy thương hiệu');
+            }
+
+            $entry = ShopEntry::create([
+                'entity' => 'brands',
+                'data' => $this->normalizeBrandData($request->all()),
+                'search_text' => $this->searchText($request->all()),
+            ]);
+            $this->invalidateFacetCache();
+
+            return $this->success($this->serializeBrand($entry), 'Đã lưu thương hiệu');
+        }
+
+        $data = array_merge((array) $entry->data, $this->normalizeBrandData($request->all()));
+        $entry->update([
+            'data' => $data,
+            'search_text' => $this->searchText($data),
+        ]);
+        $this->invalidateFacetCache();
+
+        return $this->success($this->serializeBrand($entry->fresh()), 'Đã cập nhật thương hiệu');
+    }
+
+    public function destroyBrand(int $id): JsonResponse
+    {
+        $entry = ShopEntry::where('entity', 'brands')->find($id);
+        if ($entry) {
+            $entry->delete();
+            $this->invalidateFacetCache();
+        }
+
+        return $this->success(['deleted' => $entry ? 1 : 0], 'Đã xóa thương hiệu');
     }
 
     public function inventoryHistory(): JsonResponse
@@ -196,23 +330,107 @@ class ShopFacetController extends Controller
 
     public function inventoryStats(): JsonResponse
     {
-        $row = ShopProduct::query()
-            ->selectRaw('count(*) as total_products')
-            ->selectRaw('coalesce(sum(stock), 0) as total_stock')
-            ->selectRaw('coalesce(sum(reserved), 0) as total_reserved')
-            ->selectRaw("count(*) filter (where stock <= threshold) as low_stock_count")
-            ->selectRaw("coalesce(sum(stock * cost), 0) as total_value")
-            ->first();
+        $payload = Cache::remember('shop_inventory:stats:v1', 30, function () {
+            $row = ShopProduct::query()
+                ->selectRaw('count(*) as total_products')
+                ->selectRaw('coalesce(sum(stock), 0) as total_stock')
+                ->selectRaw('coalesce(sum(reserved), 0) as total_reserved')
+                ->selectRaw('count(*) filter (where stock <= threshold) as low_stock_count')
+                ->selectRaw('coalesce(sum(stock * cost), 0) as total_value')
+                ->first();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'totalProducts' => (int) ($row->total_products ?? 0),
-                'totalStock' => (int) ($row->total_stock ?? 0),
-                'totalReserved' => (int) ($row->total_reserved ?? 0),
-                'lowStockCount' => (int) ($row->low_stock_count ?? 0),
-                'totalValue' => (float) ($row->total_value ?? 0),
-            ],
-        ]);
+            return [
+                'success' => true,
+                'data' => [
+                    'totalProducts' => (int) ($row->total_products ?? 0),
+                    'totalStock' => (int) ($row->total_stock ?? 0),
+                    'totalReserved' => (int) ($row->total_reserved ?? 0),
+                    'lowStockCount' => (int) ($row->low_stock_count ?? 0),
+                    'totalValue' => (float) ($row->total_value ?? 0),
+                ],
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    private function serializeCategory(ShopEntry $entry): array
+    {
+        $data = (array) $entry->data;
+        $name = (string) ($data['name'] ?? '');
+
+        return [
+            'id' => (int) $entry->id,
+            'parentId' => $data['parent_id'] ?? $data['parentId'] ?? null,
+            'name' => $name,
+            'slug' => (string) ($data['slug'] ?? Str::slug($name)),
+            'active' => (bool) ($data['active'] ?? true),
+            'showOnMenu' => (bool) ($data['show_on_menu'] ?? $data['showOnMenu'] ?? true),
+            'icon' => (string) ($data['icon'] ?? 'ri-folder-line'),
+            'description' => $data['description'] ?? null,
+            'productCount' => 0,
+            'createdAt' => $entry->created_at?->toIso8601String(),
+            'updatedAt' => $entry->updated_at?->toIso8601String(),
+        ];
+    }
+
+    private function normalizeCategoryData(array $raw): array
+    {
+        $name = trim((string) ($raw['name'] ?? ''));
+
+        return [
+            'parent_id' => $raw['parent_id'] ?? $raw['parentId'] ?? null,
+            'name' => $name,
+            'slug' => (string) ($raw['slug'] ?? Str::slug($name)),
+            'icon' => (string) ($raw['icon'] ?? 'ri-folder-line'),
+            'description' => $raw['description'] ?? null,
+            'show_on_menu' => (bool) ($raw['show_on_menu'] ?? $raw['showOnMenu'] ?? true),
+            'active' => (bool) ($raw['active'] ?? true),
+        ];
+    }
+
+    private function serializeBrand(ShopEntry $entry): array
+    {
+        $data = (array) $entry->data;
+        $name = (string) ($data['name'] ?? '');
+        $slug = (string) ($data['slug'] ?? Str::slug($name));
+
+        return [
+            'id' => (int) $entry->id,
+            'name' => $name,
+            'slug' => $slug,
+            'logoSource' => $data['logo'] ?? $data['logoSource'] ?? null,
+            'logo' => $data['logo'] ?? null,
+            'link' => (string) ($data['link'] ?? '/products?brand='.urlencode($name)),
+            'active' => (bool) ($data['active'] ?? true),
+            'sortOrder' => (int) ($data['sort_order'] ?? $data['sortOrder'] ?? 0),
+            'createdAt' => $entry->created_at?->toIso8601String(),
+            'updatedAt' => $entry->updated_at?->toIso8601String(),
+        ];
+    }
+
+    private function normalizeBrandData(array $raw): array
+    {
+        $name = trim((string) ($raw['name'] ?? ''));
+
+        return [
+            'name' => $name,
+            'slug' => (string) ($raw['slug'] ?? Str::slug($name)),
+            'logo' => $raw['logo'] ?? $raw['logoSource'] ?? null,
+            'link' => (string) ($raw['link'] ?? '/products?brand='.urlencode($name)),
+            'active' => (bool) ($raw['active'] ?? true),
+            'sort_order' => (int) ($raw['sort_order'] ?? $raw['sortOrder'] ?? 0),
+        ];
+    }
+
+    private function searchText(array $data): string
+    {
+        return mb_substr(implode(' ', array_map(static fn ($v) => is_scalar($v) ? (string) $v : '', $data)), 0, 4000);
+    }
+
+    private function invalidateFacetCache(): void
+    {
+        Cache::forget('shop_facets:categories:v1');
+        Cache::forget('shop_facets:brands:v1');
     }
 }
